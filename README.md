@@ -112,7 +112,7 @@ Here’s a basic example using Python’s `requests` library:
 import requests
 import json
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_URL_API = "http://localhost:11434/api/generate"
 
 data = {
     "model": "qwen3:0.6b",
@@ -121,7 +121,7 @@ data = {
     "think": False
 }
 
-response = requests.post(OLLAMA_URL, json=data)
+response = requests.post(OLLAMA_URL_API, json=data)
 
 result = json.loads(response.content.decode())
 

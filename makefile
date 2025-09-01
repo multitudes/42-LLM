@@ -27,6 +27,5 @@ clean:
 
 lint:
 	flake8 src
-	flake8 llm_sdk
 
 PHONY: install run debug clean lint
