@@ -12,7 +12,7 @@ install:
 	fi
 
 run:
-	@uv run src/main.py
+	@uv run python -m src
 
 debug:
 	@echo "Debugging"

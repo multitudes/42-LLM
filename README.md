@@ -157,6 +157,18 @@ The difference is:
 - Use `uv run python ...` for reproducible, isolated environments and dependency management.
 - Use `python ...` for quick runs, but you may risk missing dependencies or using the wrong Python version.
 
+The difference is:
+
+- Using `__main__.py` in a package (like src) allows you to run the package as a module with `python -m src`. Python will look for and execute __main__.py automatically. This is the standard way to provide an entry point for a package.
+
+- Calling `main()` directly (e.g., in `ollama.py` or another script) only works if you run that specific file, like `python src/ollama.py`. It does not work with `python -m src` unless you set up `__main__.py` to call it.
+
+**Summary:**  
+- `__main__.py` enables `python -m src` and is required for package-style execution.
+- Directly calling `main()` is for script-style execution (running a single file).
+
+## llm_sdk
+you should place the llm_sdk package (folder or files) in your project’s root directory—at the same level as your src directory.
 
 ## Resources
 https://flake8.pycqa.org/en/latest/index.html  
