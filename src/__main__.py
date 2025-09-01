@@ -1,3 +1,7 @@
+# src/__main__.py
+from .function_def_classes import FunctionDef
+from .tool_classes import Tool, ToolFunction, ToolParameter
+from .utils import convert_func_to_tools
 import requests
 import json
 
@@ -9,31 +13,10 @@ def call_ollama_api(data):
     result = json.loads(response.content.decode())
     return result.get("response", result)
 
-
-def convert_functions_to_tools(functions):
-    tools = []
-    for fn in functions:
-        properties = {name: {"type": "number" if fn["args_types"][name] == "float" else "string" if fn["args_types"]
-                             [name] == "str" else "integer" if fn["args_types"][name] == "int" else "any"} for name in fn["args_names"]}
-        tool = {
-            "type": "function",
-            "function": {
-                "name": fn["fn_name"],
-                "description": f"{fn['fn_name']} function",
-                "parameters": {
-                    "type": "object",
-                    "properties": properties,
-                    "required": fn["args_names"]
-                }
-            }
-        }
-        tools.append(tool)
-    return tools
-
-
 with open("exercise_input/functions_definition.json") as f:
-    functions = json.load(f)
-tools = convert_functions_to_tools(functions)
+    functions_raw = json.load(f)
+functions = [FunctionDef(**fn) for fn in functions_raw]
+tools = convert_func_to_tools(functions)
 
 data = {
     "model": "qwen3:0.6b",
