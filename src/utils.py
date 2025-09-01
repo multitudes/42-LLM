@@ -1,5 +1,5 @@
 # src/utils.py
-from typing import List
+from typing import List, Dict
 from .function_def_classes import FunctionDef
 from .tool_classes import Tool, ToolFunction, ToolParameter
 import json
@@ -31,5 +31,10 @@ def get_tools() -> List[Tool]:
     with open("exercise_input/functions_definition.json") as f:
         functions_raw = json.load(f)
     functions = [FunctionDef(**fn) for fn in functions_raw]
-    tools = convert_func_to_tools(functions)
-    return tools
+    return convert_func_to_tools(functions)
+
+
+def get_prompts() -> List[str]:
+    with open("exercise_input/function_calling_tests.json") as f:
+        prompts_raw = json.load(f)
+    return [pr["prompt"] for pr in prompts_raw]

@@ -25,12 +25,13 @@ class NameFunctionCall(BaseModel):
 
 def main():
     prompts = get_prompts()
+    print(f"Loaded {len(prompts)} prompts.")
     for prompt in prompts:
         print(f"Prompt: {prompt}")
         messages = [
             Message(
                 role="user",
-                content=f"{prompt}.  Reply in JSON choosing from the list of tools and which tool you used."
+                content=f"{prompt} Reply in JSON choosing from the list of tools and which tool you used."
             )
         ]
         tools = get_tools()  # Should return a list of dicts
@@ -39,24 +40,20 @@ def main():
             messages=messages,
             tools=tools,
             stream=False,
-            think=False
+            think=False,
         )
-
         result = call_ollama_api(data.dict())
+        content_json = result["message"]["content"]
+        print(content_json)
+        time.sleep(3)
+        # parsed = json.loads(content_json)
 
-        # print(result)
-        tool_calls = result["message"].get("tool_calls")
-        if tool_calls and len(tool_calls) > 0:
-            tool_call = tool_calls[0]
-            fn_name = tool_call["function"]["name"]
-            args = tool_call["function"]["arguments"]
-            print(fn_name)
-            print(args)
-        else:
-            print("No tool call found for this prompt.")
+        # fn_name = parsed["name"]
+        # args = parsed["arguments"]
 
-        print(fn_name)  # Output: fn_add_numbers
-        print(args) 
+        # print(fn_name)  # Output: fn_greet
+        # print(args) 
+
 
 if __name__ == "__main__":
     main()
