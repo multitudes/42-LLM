@@ -21,9 +21,12 @@ debug:
 clean:
 	@echo "Removing .venv"
 	@rm -rf .venv
+	@echo "Removing __pycache__"
+	@rm -rf src/__pycache__
+	@rm -rf llm_sdk/__pycache__
 
 lint:
-	@echo "Linting"
-	@flake8 src
+	flake8 src
+	flake8 llm_sdk
 
 PHONY: install run debug clean lint
