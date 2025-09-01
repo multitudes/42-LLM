@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Dict
 
+
 # Pydantic classes to define the different parts of the tool schema:
 # "parameters": {
 #     "type": "object",
@@ -12,8 +13,6 @@ from typing import List, Dict
 #     },
 #     "required": ["city"]
 # }
-
-
 class ToolParameter(BaseModel):
     type: str = "object"
     properties: Dict[str, Dict[str, str]]
