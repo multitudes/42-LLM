@@ -64,3 +64,25 @@ Here’s what the curl -LsSf options mean:
 -S: Show errors (used with -s to display errors if they occur).
 -f: Fail silently on server errors (don’t output HTML error pages; exit with error code).
 Combined, these options make curl quietly download the script, follow redirects, and only show errors if something goes wrong.
+
+## makefile
+In a Makefile, the `@` symbol before a command suppresses the command’s echo (it won’t print the command itself, just the output).
+
+- **Use `@` before shell commands:**  
+  Example: `@echo "Hello"`
+
+- **Do NOT use `@` before shell control structures (`fi`, `else`, etc.):**  
+  These are not commands, but part of the shell syntax.  
+  So you write:
+  ```
+  @if ...; then \
+      ... \
+  else \
+      ... \
+  fi
+  ```
+
+**Summary:**  
+- Use `@` before actual commands to suppress their echo.
+- Do not use `@` before shell keywords like `fi`, `else`, `then`.  
+- Only the first line of a multi-line shell block needs the `@` to suppress all output.

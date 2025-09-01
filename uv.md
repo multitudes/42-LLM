@@ -14,8 +14,6 @@ pip install uv
 2. **Create a virtual environment and install dependencies:**
    ```zsh
    uv venv .venv
-   uv pip install numpy pydantic
-   # If you have a requirements.txt:
    uv pip install -r requirements.txt
    ```
 Place your `requirements.txt` file in the root of your project directory—where your makefile, README.md, and `.venv` are located.

@@ -4,7 +4,12 @@ install:
 		curl -LsSf https://astral.sh/uv/install.sh | sh; \
 	}
 	@echo "uv version: $$(uv --version)"
-	
+	@if [ ! -f pyproject.toml ]; then \
+		uv init; \
+		echo "uv project initialized. Edit pyproject.toml if needed"; \
+	else \
+		echo "uv project already initialized"; \
+	fi
 
 run:
 	@echo "Running"
