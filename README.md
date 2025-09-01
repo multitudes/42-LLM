@@ -32,3 +32,21 @@ be graded.
 
 If any additional project-specific requirements apply, they will be stated immediately below this
 section.
+
+## Additional instructions
+- All classes must use pydantic for validation.
+- You can use the numpy and json packages.
+- The use of dspy (or any similar package) is completely forbidden, including pytorch, hug-
+gingface package, transformers etc.
+- You can use the following models:
+- ollama_chat/qwen3:0.6b (default)
+- Feel free to use other models (using the names from the huggingface hub) during the beta and let us know!
+- The function to call should be chosen using the LLM, not with heuristics or any other sort of medieval magic.
+- It is forbidden to use any private methods or attributes from the LLM_SDK package.
+- You should create a virtual environment and install the packages numpy, and pydantic using uv. To use llm_sdk you can copy it in the same directory than the one src is in.
+- The evaluators, as well as the moulinette, will just run uv sync.
+- Your program must be run using the following command (where src is the folder containing your files):
+```
+uv run python -m src
+```
+- All errors should be handled gracefully. It must never crash unexpectedly, and must always provide a clear error message to the user.
