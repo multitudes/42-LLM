@@ -13,10 +13,11 @@ def convert_func_to_tools(functions: List[FunctionDef]) -> List[Tool]:
             else "string" if fn.args_types[name] == "str"
             else "integer" if fn.args_types[name] == "int"
             else "any"} for name in fn.args_names}
+        readable_name = fn.fn_name.replace('_', ' ')
         tool = Tool(
             function=ToolFunction(
                 name=fn.fn_name,
-                description=f"{fn.fn_name} function",
+                description=f"{readable_name} function",
                 parameters=ToolParameter(
                     properties=properties,
                     required=fn.args_names
