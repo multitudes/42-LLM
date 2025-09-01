@@ -1,7 +1,7 @@
 install:
 	@command -v uv >/dev/null 2>&1 || { \
 		echo "uv not found. Installing..."; \
-		pip install uv; \
+		curl -LsSf https://astral.sh/uv/install.sh | sh; \
 	}
 	@echo "uv version: $$(uv --version)"
 	

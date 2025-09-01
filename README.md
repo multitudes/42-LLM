@@ -50,3 +50,17 @@ gingface package, transformers etc.
 uv run python -m src
 ```
 - All errors should be handled gracefully. It must never crash unexpectedly, and must always provide a clear error message to the user.
+
+
+## The makefile
+To install uv if not present I follow the official uv docs for Linux and mac:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh;
+```
+Here’s what the curl -LsSf options mean:
+
+-L: Follow redirects (if the URL redirects to another location).
+-s: Silent mode (don’t show progress or error messages).
+-S: Show errors (used with -s to display errors if they occur).
+-f: Fail silently on server errors (don’t output HTML error pages; exit with error code).
+Combined, these options make curl quietly download the script, follow redirects, and only show errors if something goes wrong.

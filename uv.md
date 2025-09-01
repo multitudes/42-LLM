@@ -18,6 +18,20 @@ pip install uv
    # If you have a requirements.txt:
    uv pip install -r requirements.txt
    ```
+Place your `requirements.txt` file in the root of your project directory—where your makefile, README.md, and `.venv` are located.
+
+**Example structure:**
+```
+/Users/laurentb/Dev/42-LLM-test/
+├── makefile
+├── README.md
+├── requirements.txt   ← put it here
+├── src/
+├── uv.md
+└── .venv/
+```
+
+This allows `uv pip install -r requirements.txt` and `uv sync` to find and use it automatically.
 
 3. **Sync dependencies (recommended for reproducibility):**
    ```zsh
