@@ -5,8 +5,7 @@ A project for 42-Global with python and alms
 ## Common Instructions
 General Rules
 - Your project must be written in Python 3.11 or later.
-- Your project must adhere to the flake8 coding standard. Bonus files are also subject to
-this standard.
+- Your project must adhere to the flake8 coding standard. Bonus files are also subject to this standard.
 - Your functions should handle exceptions gracefully to avoid crashes. Use try-except
 blocks to manage potential errors. If your program crashes due to unhandled exceptions
 during the review, it will be considered non-functional.
@@ -86,3 +85,11 @@ In a Makefile, the `@` symbol before a command suppresses the command’s echo (
 - Use `@` before actual commands to suppress their echo.
 - Do not use `@` before shell keywords like `fi`, `else`, `then`.  
 - Only the first line of a multi-line shell block needs the `@` to suppress all output.
+
+
+
+## Resources
+https://flake8.pycqa.org/en/latest/index.html  
+https://docs.pydantic.dev/1.10/#__tabbed_1_3  
+https://pypi.org/project/pydantic/  
+https://docs.astral.sh/uv/guides/projects/  

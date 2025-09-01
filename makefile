@@ -12,12 +12,17 @@ install:
 	fi
 
 run:
-	@echo "Running"
+	@uv run src/main.py
+
 debug:
 	@echo "Debugging"
+
 clean:
-	@echo "Cleaning"
+	@echo "Removing .venv"
+	@rm -rf .venv
+
 lint:
 	@echo "Linting"
+	@flake8 src
 
-PHONY: install run debug clear lint
+PHONY: install run debug clean lint
