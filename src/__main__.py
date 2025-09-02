@@ -1,11 +1,11 @@
 # src/__main__.py
 import requests
 import json
-import time
+import os
 
 from .utils import get_prompts, get_tools
 from .ollama_request import OllamaRequest, Message
-from pydantic import BaseModel
+from .output_classes import NameFunctionCall
 
 
 OLLAMA_URL_API = "http://localhost:11434/api/chat"
@@ -17,20 +17,18 @@ def call_ollama_api(data):
     return result.get("response", result)
 
 
-class NameFunctionCall(BaseModel):
-    prompt: str
-    fn_name: str
-    args: dict
-
-
 def main():
+    outputs = []
     prompts = get_prompts()
     for prompt in prompts:
         print(f"Prompt: {prompt}")
         messages = [
             Message(
                 role="user",
-                content=f"{prompt}.  Reply in JSON choosing from the list of tools and which tool you used."
+                content=f"{prompt}.  "
+                "Reply ONLY in JSON with this exact format: "
+                '{"name": <function_name or null>, "arguments": <dict of arguments>}. '
+                "If no function is called, set 'name' to null and 'arguments' to {}. Do not include any other fields or text."
             )
         ]
         tools = get_tools()  # Should return a list of dicts
@@ -44,7 +42,7 @@ def main():
 
         result = call_ollama_api(data.dict())
 
-        # print(result)
+        print(result)
         tool_calls = result["message"].get("tool_calls")
         if tool_calls and len(tool_calls) > 0:
             tool_call = tool_calls[0]
@@ -64,6 +62,18 @@ def main():
                 except (TypeError, json.JSONDecodeError):
                     print("Plain text reply from LLM:")
                     print(content)
+                    fn_name = None
+                    args = {}
+
+        outputs.append(NameFunctionCall(
+            prompt=prompt,
+            fn_name=fn_name,
+            args=args
+        ))
+
+    os.makedirs("output", exist_ok=True)
+    with open("output/name_function_calls.json", "w") as f:
+        json.dump([o.dict() for o in outputs], f)
 
 
 if __name__ == "__main__":

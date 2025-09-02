@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Dict
 
+
 # Pydantic classes to define the input function schema
 # Ex of input an array of :
 #   {

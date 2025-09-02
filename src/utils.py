@@ -1,5 +1,5 @@
 # src/utils.py
-from typing import List, Dict
+from typing import List
 from .function_def_classes import FunctionDef
 from .tool_classes import Tool, ToolFunction, ToolParameter
 import json
