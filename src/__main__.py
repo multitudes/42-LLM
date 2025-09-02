@@ -53,10 +53,18 @@ def main():
             print(fn_name)
             print(args)
         else:
-            print("No tool call found for this prompt.")
+            content = result["message"].get("content")
+            if content:
+                try:
+                    parsed = json.loads(content)
+                    fn_name = parsed["name"]
+                    args = parsed["arguments"]
+                    print(fn_name)
+                    print(args)
+                except (TypeError, json.JSONDecodeError):
+                    print("Plain text reply from LLM:")
+                    print(content)
 
-        print(fn_name)  # Output: fn_add_numbers
-        print(args) 
 
 if __name__ == "__main__":
     main()
