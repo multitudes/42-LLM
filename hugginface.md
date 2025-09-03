@@ -312,3 +312,14 @@ print(tokenizer.decode(outputs[0]))
 * Hugging Face just automates: *download → rebuild model → inject weights → ready to run*.
 
 ---
+
+`.tolist()[0]` is used to convert a PyTorch tensor (which is usually 2D after encoding) into a regular Python list of token IDs.
+
+- `.tolist()` converts the tensor to a nested Python list (e.g., `[[id1, id2, ...]]`).
+- `[0]` extracts the first (and usually only) row, giving you a flat list of token IDs.
+
+So, if you have:
+```python
+input_ids = llm._encode(prompt).tolist()[0]
+```
+`input_ids` will be a list of token IDs for your prompt, ready to use with the model.

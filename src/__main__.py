@@ -1,49 +1,103 @@
 # src/__main__.py
 import json
 import string
-
-from .utils import get_prompts, get_tools
-from .ollama_request import OllamaRequest, Message
-from .output_classes import NameFunctionCall
+from time import sleep
+from .utils import get_prompts, get_functions
 from llm_sdk import Small_LLM_Model
+
 
 # OLLAMA_URL_API = "http://localhost:11434/api/chat"
 
 
-# def call_ollama_api(data):
-#     response = requests.post(OLLAMA_URL_API, json=data)
-#     result = json.loads(response.content.decode())
-#     return result.get("response", result)
+# The tokens that I need are
+# "[": 58
+# " (1) as a delimiter before and after each function name.
+# ",": 11,
+# "]": 60.
+# "<unk" and "<unk>": Unknown token, used when a word or character is not in the vocabulary.
+# "<s>": Start-of-sequence token, marks the beginning of a sentence or input.
+# "</s" and "</s>": End-of-sequence token, marks the end of a sentence or input.
+# "<unk": 128243,
+# "<unk>": 128244,
+# "<s>": 128245,
+# "</s": 128246,
+# "</s>": 128247,
+# The token "Ċ": 198 in your vocab.json typically represents a newline character (\n) or a line break
+
+
 def preprocess_word(word):
     # Remove punctuation
+    print(word)
     word = word.strip(string.punctuation)
-    # Add Ġ to indicate space (if your vocab uses this convention)
-    return "Ġ" + word if word else word
+    # Add Ġ to indicate space as seen in the vocab file
+    if word and not word.isnumeric():
+        return "Ġ" + word
+    return word
+
 
 def main():
-    llm = Small_LLM_Model(model_name="Qwen/Qwen3-0.6B")  # or your preferred model
+    input_ids = []
+    llm = Small_LLM_Model(model_name="Qwen/Qwen3-0.6B")
     vocab_path = llm.get_path_to_vocabulary_json()
     with open(vocab_path, "r") as f:
         vocabs = json.load(f)
-    prompt = "Is 4 an even number?"
-    words = prompt.split()
-    print(words)
-    tokens = [preprocess_word(word) for word in words]
-    print(tokens)
-    input_ids = [vocabs.get(token, vocabs.get("<unk>", 0)) for token in tokens]
-    for _ in range(5):  # Generate 5 tokens
-        print(input_ids)
-        logits = llm.get_logits_from_input_ids(input_ids)
-        next_token_id = logits.index(max(logits))
-        print("Next token ID:", next_token_id)
-        input_ids.append(next_token_id)
-        # Reverse the vocab dict for ID to token lookup
-        id_to_token = {v: k for k, v in vocabs.items()}
-        print(f"from the vocab: {id_to_token[next_token_id]}")
+    prompts = get_prompts()
+    for prompt in prompts:
+        logits = []
+        input_ids = llm._encode(prompt).tolist()[0]
+        input_ids += llm._encode(' Reply ONLY with a single integer (the index of the correct function in the list below, starting from 0). Do not write anything else. ').tolist()[0]
+        # input_ids = [20841, 26687, 448, 264, 3175, 7546, 320, 1782, 1922, 315, 279, 4396, 729, 304, 279, 1140, 3685, 11, 5916, 504, 220, 15, 568, 3155, 537, 3270, 4113, 770, 13]
+        input_ids += llm._encode('["function add numbers", "function get square root", "function greet", "function is even", "function multiply numbers", "function reverse string", "function substitute string with regex "]').tolist()[0]
+        # print(input_ids)
+        input = llm._decode(input_ids)
+        print(input)
+    
+    # words = prompt.split()
+    # print(words)
+    # tokens = [preprocess_word(word) for word in words]
+    # print(tokens)
+    
+    # input_ids += [vocabs.get(token, vocabs.get("<unk>", 0)) for token in tokens]
+    # append the functions to the input_ids
+    # input_ids.append(256)  # space before the array
+    # input_ids.append(58)
+    # print("[")
+    # for fn in get_functions():
+    #     input_ids.append(1)  # '"' delimiter
+    #     print("\"")
+    #     # Remove 'fn' prefix and underscores, then preprocess each word
+    #     fn_name = fn.fn_name
+    #     fn_words = fn_name.split('_')
+    #     if fn_words[0] == 'fn':
+    #         print("removed fn")
+    #         fn_words = fn_words[1:]
+    #     fn_tokens = [preprocess_word(word) for word in fn_words]
+    #     for token in fn_tokens:
+    #         input_ids.append(vocabs.get(token, vocabs.get("<unk>", 0)))
+    #     input_ids.append(1)  # '"' delimiter
+    #     input_ids.append(11)  # ',' separator
+    # input_ids.append(60)
+    # input_ids.append(128247)  # end of sequence token
 
-    # vocab_path = llm.get_path_to_vocabulary_json()
-    # print("Vocabulary file path:", vocab_path)
+    # Reverse the vocab dict for ID to token lookup
+    # id_to_token = {v: k for k, v in vocabs.items()}
+    # for id in input_ids:
+    #     # print("Token ID:", id)
+    #     print(id_to_token.get(id, "<unk>"), end="")
 
+        # output = llm._decode(input_ids)
+        # print("\nDecoded output:", output)
+        for _ in range(14):  # Generate 5 tokens
+            # print(input_ids)
+            logits = llm.get_logits_from_input_ids(input_ids)
+            next_token_id = logits.index(max(logits))
+            # print("Next token ID:", next_token_id)
+            input_ids.append(next_token_id)
+        # print(f"from the vocab: {id_to_token.get(next_token_id, '<unk>')}")
+
+        output = llm._decode(input_ids)
+        print("\nDecoded output:", output)
+        sleep(1)
     # outputs = []
     # prompts = get_prompts()
     # for prompt in prompts:
