@@ -41,7 +41,21 @@ def get_functions() -> List[FunctionDef]:
     return functions
 
 
+def get_functions_names_for_prompt() -> List[str]:
+    with open("exercise_input/functions_definition.json") as f:
+        functions_raw = json.load(f)
+    functions = [FunctionDef(**fn) for fn in functions_raw]
+    return [fn.fn_name for fn in functions]
+
+
 def get_prompts() -> List[str]:
-    with open("exercise_input/function_calling_tests.json") as f:
-        prompts_raw = json.load(f)
-    return [pr["prompt"] for pr in prompts_raw]
+    try:
+        with open("exercise_input/function_calling_tests.json") as f:
+            prompts_raw = json.load(f)
+        return [pr["prompt"] for pr in prompts_raw]
+    except FileNotFoundError:
+        print("Error: function_calling_tests.json not found.")
+        return []
+    except json.JSONDecodeError:
+        print("Error: JSON decode failed for function_calling_tests.json.")
+        return []

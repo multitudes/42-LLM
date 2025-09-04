@@ -43,11 +43,45 @@ def main():
         vocabs = json.load(f)
     prompts = get_prompts()
     for prompt in prompts:
+        # llm = Small_LLM_Model(model_name="Qwen/Qwen3-0.6B")
         logits = []
+        usertext = f"'{prompt}'"
+        system_msg = "You are a tool selector. Reply ONLY with the correct index as a digit 0–6."
+
+        user_msg = f"""{usertext}.
+
+        Here are the functions:
+        0: add numbers
+        1: get square root
+        2: greet
+        3: is even
+        4: multiply numbers
+        5: reverse string
+        6: substitute string with regex
+
+        Reply ONLY with the integer index.
+        """
+
+        prompt = (
+            "<|im_start|>system\n" + system_msg + "<|im_end|>\n"
+            "<|im_start|>user\n" + user_msg + "<|im_end|>\n"
+            "<|im_start|>assistant\n"
+        )
+
+        input_ids = llm._encode(prompt)
+
+        # prompt = llm._tokenizer.apply_chat_template(
+        #     [
+        #         {"role": "system", "content": "You are a tool selector. You must only reply with the correct index as an integer."},
+        #         {"role": "user", "content": f"{usertext}.\n\nHere are the functions:\n0: add numbers\n1: get square root\n2: greet\n3: is even\n4: multiply numbers\n5: reverse string\n6: substitute string with regex\n\nReply ONLY with the integer index."}
+        #     ],
+        #     tokenize=False,
+        #     add_generation_prompt=True
+        # )
         input_ids = llm._encode(prompt).tolist()[0]
-        input_ids += llm._encode(' Reply ONLY with a single integer (the index of the correct function in the list below, starting from 0). Do not write anything else. ').tolist()[0]
+        # input_ids += llm._encode(' Reply ONLY with a single integer (the INDEX of the correct function in the list below, starting from 0). DO NOT WRITE ANYTHING ELSE JUST THE INDEX. ').tolist()[0]
         # input_ids = [20841, 26687, 448, 264, 3175, 7546, 320, 1782, 1922, 315, 279, 4396, 729, 304, 279, 1140, 3685, 11, 5916, 504, 220, 15, 568, 3155, 537, 3270, 4113, 770, 13]
-        input_ids += llm._encode('["function add numbers", "function get square root", "function greet", "function is even", "function multiply numbers", "function reverse string", "function substitute string with regex "]').tolist()[0]
+        # input_ids += llm._encode('["function index 0: add numbers", "function index 1: get square root", "function index 2: greet", "function index 3: is even", "function index 4: multiply numbers", "function index 5: reverse string", "function index 6: substitute string with regex "]').tolist()[0]
         # print(input_ids)
         input = llm._decode(input_ids)
         print(input)
@@ -87,17 +121,19 @@ def main():
 
         # output = llm._decode(input_ids)
         # print("\nDecoded output:", output)
-        for _ in range(14):  # Generate 5 tokens
+        answer_ids = []
+        for _ in range(140):  # Generate 20 tokens
             # print(input_ids)
             logits = llm.get_logits_from_input_ids(input_ids)
             next_token_id = logits.index(max(logits))
             # print("Next token ID:", next_token_id)
             input_ids.append(next_token_id)
+            answer_ids.append(next_token_id)
         # print(f"from the vocab: {id_to_token.get(next_token_id, '<unk>')}")
 
-        output = llm._decode(input_ids)
-        print("\nDecoded output:", output)
-        sleep(1)
+        output = llm._decode(answer_ids)
+        print("\nDecoded output:", output, end="\n")
+        
     # outputs = []
     # prompts = get_prompts()
     # for prompt in prompts:
