@@ -2,10 +2,16 @@
 import json
 import string
 import re
+import os
 
 from time import sleep
-from .utils import get_prompts, get_functions, convert_functions_to_tools
+from .output_classes import FunctionCallingName
+from .utils import get_prompts, get_functions, convert_functions_to_tools, extract_json_from_response
 from llm_sdk import Small_LLM_Model
+
+
+def has_consecutive_token(ids, token=92):
+    return any(ids[i] == token and ids[i+1] == token for i in range(len(ids)-1))
 
 
 def main():
@@ -22,6 +28,7 @@ def main():
     with my own tokenizer
     """
     input_ids = []
+    output_to_write_to_file = []
     llm = Small_LLM_Model(model_name="Qwen/Qwen3-0.6B")
     vocab_path = llm.get_path_to_vocabulary_json()
     with open(vocab_path, "r") as f:
@@ -30,7 +37,7 @@ def main():
     functions = get_functions()
     tools = convert_functions_to_tools(functions)
     # Reverse the vocab dict for ID to token lookup
-    # id_to_token = {v: k for k, v in vocabs.items()}
+    id_to_token = {v: k for k, v in vocabs.items()}
 
     for prompt in prompts:
         logits = []
@@ -60,73 +67,26 @@ def main():
         )
         input_ids = llm._encode(final_prompt).tolist()[0]
         answer_ids = []
-        for _ in range(40):  # Generate 150 tokens
+        for _ in range(100):  # Generate 150 tokens
             print(".", end="", flush=True)
             logits = llm.get_logits_from_input_ids(input_ids)
             next_token_id = max(enumerate(logits), key=lambda x: x[1])[0]
             input_ids.append(next_token_id)
             answer_ids.append(next_token_id)
-            
-        output = llm._decode(answer_ids)
-        print("\nDecoded output:", output, end="\n")
+            print(f"Next token ID: {next_token_id}, Token: {id_to_token.get(next_token_id, '<unk>')}")
+            if (next_token_id == 3417 or next_token_id == 30975):
+                print("Token }} appears! End of json!")
+                break
+        
+        llm_output = llm._decode(answer_ids)
+        print("\nDecoded output:", llm_output, end="\n")
+        result = extract_json_from_response(
+            prompt, llm_output)
+        output_to_write_to_file.append(result)
 
-
-    # # outputs = []
-    # # prompts = get_prompts()
-    # # for prompt in prompts:
-    # #     print(f"Prompt: {prompt}")
-    # #     messages = [
-    # #         Message(
-    # #             role="user",
-    # #             content=f"{prompt}.  "
-    # #             "Reply ONLY in JSON with this exact format: "
-    # #             '{"name": <function_name or null>, "arguments": <dict of arguments>}. '
-    # #             "If no function is called, set 'name' to null and 'arguments' to {}. Do not include any other fields or text."
-    # #         )
-    # #     ]
-    # #     tools = get_tools()  # Should return a list of dicts
-    # #     data = OllamaRequest(
-    # #         model="qwen3:0.6b",
-    # #         messages=messages,
-    # #         tools=tools,
-    # #         stream=False,
-    # #         think=False
-    # #     )
-
-    # #     result = call_ollama_api(data.dict())
-
-    # #     print(result)
-    # #     tool_calls = result["message"].get("tool_calls")
-    # #     if tool_calls and len(tool_calls) > 0:
-    # #         tool_call = tool_calls[0]
-    # #         fn_name = tool_call["function"]["name"]
-    # #         args = tool_call["function"]["arguments"]
-    # #         print(fn_name)
-    # #         print(args)
-    # #     else:
-    # #         content = result["message"].get("content")
-    # #         if content:
-    # #             try:
-    # #                 parsed = json.loads(content)
-    # #                 fn_name = parsed["name"]
-    # #                 args = parsed["arguments"]
-    # #                 print(fn_name)
-    # #                 print(args)
-    # #             except (TypeError, json.JSONDecodeError):
-    # #                 print("Plain text reply from LLM:")
-    # #                 print(content)
-    # #                 fn_name = None
-    # #                 args = {}
-
-    # #     outputs.append(NameFunctionCall(
-    # #         prompt=prompt,
-    # #         fn_name=fn_name,
-    # #         args=args
-    # #     ))
-
-    # # os.makedirs("output", exist_ok=True)
-    # # with open("output/name_function_calls.json", "w") as f:
-    # #     json.dump([o.dict() for o in outputs], f)
+    os.makedirs("output", exist_ok=True)
+    with open("output/function_calling_name.json", "w") as f:
+        json.dump([o.dict() for o in output_to_write_to_file], f)
 
 
 if __name__ == "__main__":

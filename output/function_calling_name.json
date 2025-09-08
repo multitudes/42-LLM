@@ -1,0 +1,16 @@
+[
+    {
+        "prompt": "What is the square root of 16?",
+        "fn_name": "fn_get_square_root",
+        "args": {
+            "a": 16
+        }
+    },
+    {
+        "prompt": "Reverse the string 'hello'",
+        "fn_name": "fn_reverse_string",
+        "args": {
+            "s": "hello"
+        }
+    }
+]

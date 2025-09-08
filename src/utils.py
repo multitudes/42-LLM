@@ -6,7 +6,7 @@ from typing import List
 from .function_def_classes import FunctionDef
 from .tool_classes import Tool, ToolFunction, ToolParameter
 from .tool_classes import Tool, ToolFunction, ToolParameter
-from .output_classes import NameFunctionCall
+from .output_classes import FunctionCallingName
 
 
 # def convert_func_to_tools(functions: List[FunctionDef]) -> List[Tool]:
@@ -114,7 +114,7 @@ def convert_functions_to_tools(functions: List[FunctionDef]) -> str:
 def extract_json_from_response(
         prompt: str,
         response: str
-) -> NameFunctionCall | None:
+) -> FunctionCallingName | None:
     """
     Extracts and parses a JSON object from the model's full output string.
 
@@ -122,7 +122,7 @@ def extract_json_from_response(
         prompt (str): The original natural-language request.
         response (str): The full output string from the model.
     Returns:
-        NameFunctionCall: The parsed NameFunctionCall object.
+        FunctionCallingName: The parsed FunctionCallingName object.
     """
     # First get rid of the think block if it exists
     think_tag = "</think>"
@@ -135,13 +135,14 @@ def extract_json_from_response(
     match = re.search(pattern, response, re.DOTALL)
     if not match:
         print("No JSON object found in the response.")
-        return None
+        return FunctionCallingName(prompt=prompt, fn_name="", args={})
     json_str = match.group(0)
     try:
         data = json.loads(json_str)
         fn_name = data.get("fn_name")
         args = data.get("args", {})
-        return NameFunctionCall(prompt=prompt, fn_name=fn_name, args=args)
+        print(f"Extracted JSON: fn_name={fn_name}, args={args}")
+        return FunctionCallingName(prompt=prompt, fn_name=fn_name, args=args)
     except Exception as e:
         print(f"Error parsing JSON from response: {e}")
-        return None
+        return FunctionCallingName(prompt=prompt, fn_name="", args={})
