@@ -7,7 +7,8 @@ from huggingface_hub import hf_hub_download
 import os
 
 
-logging.set_verbosity_error()  # keep the console clean
+# logging.set_verbosity_error()  # keep the console clean
+logging.set_verbosity_info()
 
 
 class Small_LLM_Model:
