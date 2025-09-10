@@ -6,12 +6,9 @@ import os
 
 from time import sleep
 from .output_classes import FunctionCallingName
-from .utils import get_prompts, get_functions, convert_functions_to_tools, extract_json_from_response
+from .utils import get_prompts, get_functions, convert_functions_to_tools
+from .utils import extract_json_from_response
 from llm_sdk import Small_LLM_Model
-
-
-def has_consecutive_token(ids, token=92):
-    return any(ids[i] == token and ids[i+1] == token for i in range(len(ids)-1))
 
 
 def get_pairs(tokens):
@@ -24,13 +21,21 @@ def preprocess_for_bpe(text):
     text = text.replace(" ", "Ġ")
     text = text.replace("\n", "Ċ")
     text = text.replace("\t", "ĉ")
-    # text = text.replace("?", "")
     return text
 
 
+SPECIAL_TOKENS = ["<|im_start|>", "<|im_end|>"]
+
+
 def bpe_tokenize(text, vocab, merge_ranks):
-    # Start with characters (or initial tokens)
-    tokens = list(preprocess_for_bpe(text))
+    pattern = "(" + "|".join(re.escape(tok) for tok in SPECIAL_TOKENS) + ")"
+    parts = re.split(pattern, text)
+    tokens = []
+    for part in parts:
+        if part in SPECIAL_TOKENS:
+            tokens.append(part)
+        else:
+            tokens.extend(list(preprocess_for_bpe(part)))
     while True:
         pairs = get_pairs(tokens)
         # Find the best pair to merge
@@ -93,7 +98,7 @@ def main():
     functions = get_functions()
     tools = convert_functions_to_tools(functions)
     # Reverse the vocab dict for ID to token lookup
-    id_to_token = {v: k for k, v in vocab.items()}
+    # id_to_token = {v: k for k, v in vocab.items()}
 
     for prompt in prompts:
         logits = []
@@ -121,9 +126,9 @@ Now, answer the following request. Only provide the JSON for the tool call.
             f"<|im_start|>user\n{user_msg}/no_think<|im_end|>\n"
             f"<|im_start|>assistant\n"
         )
-        input_ids = llm._encode(final_prompt).tolist()[0]
-        # input_ids = bpe_tokenize(final_prompt, vocab=vocab, merge_ranks=merge_ranks)
-        # print("Input IDs:", input_ids)
+        # input_ids = llm._encode(final_prompt).tolist()[0]
+        input_ids = bpe_tokenize(final_prompt, vocab=vocab, merge_ranks=merge_ranks)
+        print("Input IDs:", input_ids)
         print("Decoded Input:", llm._decode(input_ids))
         answer_ids = []
         for _ in range(150):  # Generate 150 tokens

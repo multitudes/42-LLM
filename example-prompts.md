@@ -243,3 +243,38 @@ Now, answer the following request. Only provide the JSON for the tool call.
 user
 What is the square root of 16? /no_think
 assistant
+
+
+
+
+i always get it to think too much
+<|im_start|>assistant:
+<|im_end|>
+Okay, the user is asking for the square root of 16. Let me check which function to use. The available functions include fn_get_square_root, which requires a number. So I need to call that function with a set of 16. The parameters are straightforward here. Just pass the number 16 to the get square root function. No other parameters are needed. Let me make sure there's no other function that could be relevant here. The other functions are for addition, multiplication, greetings, checking even
+No JSON object found in the response.
+
+
+and thus is with _encode
+
+]
+---
+Here are some examples:
+
+User: Multiply 45 by 11
+Assistant: {"fn_name": "fn_multiply_numbers", "args": {"a": 45, "b": 11}}
+
+User: can you reverse the word 'banana'?
+Assistant: {"fn_name": "fn_reverse_string", "args": {"s": "banana"}}
+---
+
+Now, answer the following request. Only provide the JSON for the tool call.
+
+user
+What is the square root of 16?/no_think
+assistant
+
+......................Token }} appears! End of json!
+
+Decoded output: <think>
+
+</think>
