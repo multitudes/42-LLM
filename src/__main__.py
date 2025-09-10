@@ -24,10 +24,19 @@ def preprocess_for_bpe(text):
     return text
 
 
-SPECIAL_TOKENS = ["<|im_start|>", "<|im_end|>"]
+SPECIAL_TOKENS = ["<|im_start|>", "<|im_end|>", "<think>", "</think>"]
 
 
 def bpe_tokenize(text, vocab, merge_ranks):
+    """
+    A simple BPE tokenizer implementation.
+    This function tokenizes the input text using Byte Pair Encoding (BPE)
+    based on the provided vocabulary and merge ranks.
+    There are some special tokens that are needed for the prompt structure
+    that should be treated as single tokens and not split further.
+    151644: <|im_start|>
+    151645: <|im_end|>
+    """
     pattern = "(" + "|".join(re.escape(tok) for tok in SPECIAL_TOKENS) + ")"
     parts = re.split(pattern, text)
     tokens = []
@@ -58,10 +67,24 @@ def bpe_tokenize(text, vocab, merge_ranks):
                 new_tokens.append(tokens[i])
                 i += 1
         tokens = new_tokens
-    #debug
-    print("Final tokens before vocab mapping:", tokens)
+    # debug
+    # print("Final tokens before vocab mapping:", tokens)
     # Map tokens to IDs
     return [vocab[token] for token in tokens if token in vocab]
+
+
+def custom_decode(ids, id_to_token, skip_ids={151644, 151645, 151667, 151668}):
+    """
+    Custom decode function to convert token IDs back to text.
+    There are some special token IDS that we want to skip in the response:
+    151667: <think>
+    151668: </think>
+    Those tokens are not included in the vocab dictionary we use for decoding.
+    """
+    tokens = [id_to_token.get(i, "<unk>") for i in ids if i not in skip_ids]
+    text = "".join(tokens)
+    text = text.replace("Ġ", " ").replace("Ċ", "\n").replace("ĉ", "\t")
+    return text
 
 
 def main():
@@ -82,10 +105,20 @@ def main():
     vocab_path = llm.get_path_to_vocabulary_json()
     with open(vocab_path, "r") as f:
         vocab = json.load(f)
-
+    # Add special tokens if missing
+    special_tokens = {
+        "<|im_start|>": 151644,
+        "<|im_end|>": 151645,
+        "<think>": 151667,
+        "</think>": 151668,
+    }
+    for tok, tid in special_tokens.items():
+        if tok not in vocab:
+            vocab[tok] = tid
     # Load merges
     with open("merges.txt", "r") as f:
-        merges = [line.strip().split() for line in f if not line.startswith("#")]
+        merges = [line.strip().split()
+                  for line in f if not line.startswith("#")]
 
     # Build merge ranks for fast lookup
     merge_ranks = {tuple(merge): i for i, merge in enumerate(merges)}
@@ -98,7 +131,7 @@ def main():
     functions = get_functions()
     tools = convert_functions_to_tools(functions)
     # Reverse the vocab dict for ID to token lookup
-    # id_to_token = {v: k for k, v in vocab.items()}
+    id_to_token = {v: k for k, v in vocab.items()}
 
     for prompt in prompts:
         logits = []
@@ -127,9 +160,11 @@ Now, answer the following request. Only provide the JSON for the tool call.
             f"<|im_start|>assistant\n"
         )
         # input_ids = llm._encode(final_prompt).tolist()[0]
-        input_ids = bpe_tokenize(final_prompt, vocab=vocab, merge_ranks=merge_ranks)
-        print("Input IDs:", input_ids)
-        print("Decoded Input:", llm._decode(input_ids))
+        input_ids = bpe_tokenize(
+            final_prompt, vocab=vocab, merge_ranks=merge_ranks)
+        # print("Input IDs:", input_ids)
+        # print("Decoded Input:", llm._decode(input_ids))
+        # print("Decoded Input with custom_decode:", custom_decode(input_ids, id_to_token))
         answer_ids = []
         for _ in range(150):  # Generate 150 tokens
             print(".", end="", flush=True)
@@ -142,7 +177,8 @@ Now, answer the following request. Only provide the JSON for the tool call.
                 print("Token }} appears! End of json!")
                 break
 
-        llm_output = llm._decode(answer_ids)
+        # llm_output = llm._decode(answer_ids)
+        llm_output = custom_decode(answer_ids, id_to_token)
         print("\nDecoded output:", llm_output, end="\n")
         result = extract_json_from_response(
             prompt, llm_output)
