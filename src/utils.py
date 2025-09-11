@@ -1,12 +1,15 @@
 # src/utils.py
 import json
 import re
+import os
 
 from typing import List
 from .schemas import FunctionDefinition, SelectedFunction
 from .schemas import Tool, ToolFunction, ToolParameter
 
-PATH_TOOLS_DEFINITION = "exercise_input/functions_definition.json"
+OUTPUT_FILE = "output/function_calling_name.json"
+TOOLS_DEFINITION_FILE = "exercise_input/functions_definition.json"
+THINK_TAG = "</think>"
 
 
 def get_functions() -> List[FunctionDefinition]:
@@ -19,7 +22,7 @@ def get_functions() -> List[FunctionDefinition]:
         a valid functions list.
     """
     try:
-        with open(PATH_TOOLS_DEFINITION) as f:
+        with open(TOOLS_DEFINITION_FILE) as f:
             functions_raw = json.load(f)
         functions = [FunctionDefinition(**fn) for fn in functions_raw]
         return functions
@@ -27,7 +30,7 @@ def get_functions() -> List[FunctionDefinition]:
         raise RuntimeError(f"Error loading functions for tools: {e}")
 
 
-def get_prompts(file: str) -> List[str]:
+def get_input_prompts(file: str) -> List[str]:
     """
     Load the prompts from a JSON file.
     Each prompt should be under the "prompt" key.
@@ -107,9 +110,8 @@ def extract_json_from_response(
         SelectedFunction: The parsed SelectedFunction object.
     """
     # First get rid of the think block if it exists
-    think_tag = "</think>"
-    if think_tag in response:
-        response = response.split(think_tag, 1)[1].strip()
+    if THINK_TAG in response:
+        response = response.split(THINK_TAG, 1)[1].strip()
     pattern = r'\{\s*"fn_name":.*?\}\s*\}'
     match = re.search(pattern, response, re.DOTALL)
     if not match:
@@ -120,8 +122,13 @@ def extract_json_from_response(
         data = json.loads(json_str)
         fn_name = data.get("fn_name")
         args = data.get("args", {})
-        # print(f"Extracted JSON: fn_name={fn_name}, args={args}")
         return SelectedFunction(prompt=prompt, fn_name=fn_name, args=args)
     except Exception as e:
         print(f"Error parsing JSON from response: {e}")
         return SelectedFunction(prompt=prompt, fn_name="", args={})
+
+
+def write_output_to_file(output_to_write_to_file):
+    os.makedirs("output", exist_ok=True)
+    with open(OUTPUT_FILE, "w") as f:
+        json.dump([o.dict() for o in output_to_write_to_file], f)

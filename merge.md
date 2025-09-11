@@ -1,3 +1,7 @@
+# the merge.txt file
+
+## asking chatgippidy
+
 Q. You do need merges.txt to correctly transform a strings in the right output tokens?
 
 In the context of your project, the statement "You do need merges.txt to correctly transform strings into the right output tokens" is highlighting a critical missing piece in your custom tokenizer.

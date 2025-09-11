@@ -1,5 +1,12 @@
 ## Python packages
 
+Just as a recap for me... since we use uv and the code to run the program is 
+```
+	@uv run python -m src
+```
+so the src has to have a package structure.
+
+
 In Python, a **folder containing an `__init__.py` file is a package**.
 
 - A **module** is a single `.py` file (e.g., `ollama.py`).

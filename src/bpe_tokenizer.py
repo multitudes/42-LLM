@@ -2,7 +2,10 @@
 import re
 import json
 
+MAX_TOKENS = 150
 SPECIAL_TOKENS = ["<|im_start|>", "<|im_end|>", "<think>", "</think>"]
+END_TOKEN_ID1 = 3417
+END_TOKEN_ID2 = 30975
 MERGES_PATH = "merges.txt"
 SPECIAL_TOKENS = {
     "<|im_start|>": 151644,
@@ -10,6 +13,7 @@ SPECIAL_TOKENS = {
     "<think>": 151667,
     "</think>": 151668,
 }
+# These token IDs to signal end of json generation '}}' and '\"}}"
 
 
 def initialize_tokenizer(vocab_path):
@@ -53,7 +57,8 @@ def get_pairs(tokens):
 
 
 def preprocess_for_bpe(text):
-    """Preprocess text for BPE tokenization by replacing spaces,
+    """
+    Preprocess text for BPE tokenization by replacing spaces,
     newlines, and tabs for consistent tokenization.
     """
     text = text.replace(" ", "Ġ")
@@ -72,7 +77,8 @@ def bpe_tokenize(text, vocab, merge_ranks):
     151644: <|im_start|>
     151645: <|im_end|>
     """
-    pattern = "(" + "|".join(re.escape(tok) for tok in SPECIAL_TOKENS) + ")"
+    pattern = "(" + "|".join(
+        re.escape(tok) for tok in SPECIAL_TOKENS.keys()) + ")"
     parts = re.split(pattern, text)
     tokens = []
     for part in parts:
@@ -120,3 +126,59 @@ def custom_decode(ids, id_to_token):
     text = text.replace("Ġ", " ").replace("Ċ", "\n").replace("ĉ", "\t")
     print("\n\nllm output:", text, end="")
     return text
+
+
+def create_prompt(user_input: str, tools: str) -> str:
+    """
+    Create the prompt for the LLM based on user input and available tools.
+    """
+    system_msg = "You are a helpful assistant that uses tools. "
+    system_msg += "Based on the user's request, you must call the "
+    system_msg += "appropriate tool with the correct arguments. "
+    system_msg += "You have access to the following tools:\n"
+    system_msg += f"{tools}"
+    system_msg += """
+---
+Here are some examples:
+
+User: Multiply 45 by 11
+Assistant: {"fn_name": "fn_multiply_numbers", "args": {"a": 45, "b": 11}}
+
+User: can you reverse the word 'banana'?
+Assistant: {"fn_name": "fn_reverse_string", "args": {"s": "banana"}}
+---
+
+Now, answer the following request. Only provide the JSON for the tool call.
+"""
+    return (
+        f"<|im_start|>system\n{system_msg}<|im_end|>\n"
+        f"<|im_start|>user\n{user_input}/no_think<|im_end|>\n"
+        f"<|im_start|>assistant\n"
+    )
+
+
+def get_answer_ids(llm, input_ids):
+    """
+    The llmm takes a list of input token ids and generates
+    a list of logits for the next token at each step.
+    The next token is chosen as the one with the highest logit,
+    and appended to the input_ids for the next generation.
+    At the same time I am interested in collecting the
+    generated token ids to decode later in answer_ids.
+    args:
+        llm: instance of Small_LLM_Model class
+        input_ids: list of input token ids (integers)
+    returns: list of generated token ids (integers)
+    The generation stops when either the maximum number of tokens
+    is reached or when the end token is generated.
+    """
+    answer_ids = []
+    for _ in range(MAX_TOKENS):
+        print(".", end="", flush=True)
+        logits = llm.get_logits_from_input_ids(input_ids)
+        next_token_id = max(enumerate(logits), key=lambda x: x[1])[0]
+        input_ids.append(next_token_id)
+        answer_ids.append(next_token_id)
+        if (next_token_id == END_TOKEN_ID1 or next_token_id == END_TOKEN_ID2):
+            break
+    return answer_ids
