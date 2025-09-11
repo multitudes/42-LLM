@@ -3,15 +3,15 @@ import json
 import re
 
 from typing import List
-from .schemas import FunctionDef, SelectedFunction
+from .schemas import FunctionDefinition, SelectedFunction
 from .schemas import Tool, ToolFunction, ToolParameter
 
 
-def get_functions() -> List[FunctionDef]:
+def get_functions() -> List[FunctionDefinition]:
     try:
         with open("exercise_input/functions_definition.json") as f:
             functions_raw = json.load(f)
-        functions = [FunctionDef(**fn) for fn in functions_raw]
+        functions = [FunctionDefinition(**fn) for fn in functions_raw]
         return functions
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(f"Error loading functions: {e}")
@@ -22,7 +22,7 @@ def get_functions_names_for_prompt() -> List[str]:
     try:
         with open("exercise_input/functions_definition.json") as f:
             functions_raw = json.load(f)
-        functions = [FunctionDef(**fn) for fn in functions_raw]
+        functions = [FunctionDefinition(**fn) for fn in functions_raw]
         return [fn.fn_name for fn in functions]
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(f"Error loading functions names: {e}")
@@ -42,9 +42,9 @@ def get_prompts() -> List[str]:
         return []
 
 
-def convert_functions_to_tools(functions: List[FunctionDef]) -> str:
+def convert_functions_to_tools(functions: List[FunctionDefinition]) -> str:
     """
-    Convert a list of FunctionDef objects to a JSON string 
+    Convert a list of FunctionDefinition objects to a JSON string
     """
     tools = []
     for fn in functions:
@@ -107,7 +107,7 @@ def extract_json_from_response(
         data = json.loads(json_str)
         fn_name = data.get("fn_name")
         args = data.get("args", {})
-        print(f"Extracted JSON: fn_name={fn_name}, args={args}")
+        # print(f"Extracted JSON: fn_name={fn_name}, args={args}")
         return SelectedFunction(prompt=prompt, fn_name=fn_name, args=args)
     except Exception as e:
         print(f"Error parsing JSON from response: {e}")

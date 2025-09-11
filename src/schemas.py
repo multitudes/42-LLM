@@ -1,12 +1,14 @@
+# src/schemas.py
 from pydantic import BaseModel
 from typing import List, Dict, Any
 
 
-class FunctionDef(BaseModel):
+class FunctionDefinition(BaseModel):
     """Schema for defining a function signature.
 
-    This is what we get from input/functions_definition.json. This will be passed to the model
-    in the prompt to let it know what functions are available to call.
+    This is what we get from input/functions_definition.json.
+    This will be passed to the model in the prompt to let it know
+    what functions are available to call.
 
     Example:
         {
@@ -34,8 +36,8 @@ class FunctionDef(BaseModel):
 class SelectedFunction(BaseModel):
     """Schema for the function selected by the model to call.
 
-    This is what we expect the model to output after being prompted with a list of available functions
-    and a user prompt.
+    This is what we expect the model to output after being prompted
+    with a list of available functions and a user prompt.
 
     Attributes:
         prompt (str): The original natural-language request.
