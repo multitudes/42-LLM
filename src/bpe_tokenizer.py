@@ -102,7 +102,6 @@ def bpe_tokenize(text, vocab, merge_ranks):
                 new_tokens.append(tokens[i])
                 i += 1
         tokens = new_tokens
-    # Map tokens to IDs
     return [vocab[token] for token in tokens if token in vocab]
 
 
@@ -119,4 +118,5 @@ def custom_decode(ids, id_to_token):
     tokens = [id_to_token.get(i, "<unk>") for i in ids if i not in skip_ids]
     text = "".join(tokens)
     text = text.replace("Ġ", " ").replace("Ċ", "\n").replace("ĉ", "\t")
+    print("\n\nllm output:", text, end="")
     return text

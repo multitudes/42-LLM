@@ -10,6 +10,14 @@ PATH_TOOLS_DEFINITION = "exercise_input/functions_definition.json"
 
 
 def get_functions() -> List[FunctionDefinition]:
+    """
+    The functions to load are actually the ones defined in the
+    PATH_TOOLS_DEFINITION file. Those are converted to
+    FunctionDefinition objects and returned as a list.
+    Raises: RuntimeError: If there is an error loading the file
+        or parsing the JSON because the program cannot continue without
+        a valid functions list.
+    """
     try:
         with open(PATH_TOOLS_DEFINITION) as f:
             functions_raw = json.load(f)
@@ -21,7 +29,7 @@ def get_functions() -> List[FunctionDefinition]:
 
 def get_prompts(file: str) -> List[str]:
     """
-    Load prompts from a JSON file.
+    Load the prompts from a JSON file.
     Each prompt should be under the "prompt" key.
     Args:
         file (str): Path to the JSON file containing the prompts.
