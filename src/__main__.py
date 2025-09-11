@@ -5,7 +5,7 @@ import re
 import os
 
 from time import sleep
-from .output_classes import FunctionCallingName
+from .output_classes import SelectedFunction
 from .utils import get_prompts, get_functions, convert_functions_to_tools
 from .utils import extract_json_from_response
 from llm_sdk import Small_LLM_Model
@@ -122,8 +122,6 @@ def main():
 
     # Build merge ranks for fast lookup
     merge_ranks = {tuple(merge): i for i, merge in enumerate(merges)}
-    # ids = bpe_tokenize("\"root of 16\"}}")
-    # print(ids)
     input_ids = []
     output_to_write_to_file = []
 
@@ -162,11 +160,8 @@ Now, answer the following request. Only provide the JSON for the tool call.
         # input_ids = llm._encode(final_prompt).tolist()[0]
         input_ids = bpe_tokenize(
             final_prompt, vocab=vocab, merge_ranks=merge_ranks)
-        # print("Input IDs:", input_ids)
-        # print("Decoded Input:", llm._decode(input_ids))
-        # print("Decoded Input with custom_decode:", custom_decode(input_ids, id_to_token))
         answer_ids = []
-        for _ in range(150):  # Generate 150 tokens
+        for _ in range(150):
             print(".", end="", flush=True)
             logits = llm.get_logits_from_input_ids(input_ids)
             next_token_id = max(enumerate(logits), key=lambda x: x[1])[0]
@@ -174,12 +169,12 @@ Now, answer the following request. Only provide the JSON for the tool call.
             answer_ids.append(next_token_id)
             # print(f"Next token ID: {next_token_id}, Token: {id_to_token.get(next_token_id, '<unk>')}")
             if (next_token_id == 3417 or next_token_id == 30975):
-                print("Token }} appears! End of json!")
+                # print("Token }} appears! End of json!")
                 break
 
         # llm_output = llm._decode(answer_ids)
         llm_output = custom_decode(answer_ids, id_to_token)
-        print("\nDecoded output:", llm_output, end="\n")
+        print("\llm_output:", llm_output)
         result = extract_json_from_response(
             prompt, llm_output)
         output_to_write_to_file.append(result)

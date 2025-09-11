@@ -10,7 +10,7 @@ from typing import Dict, Any
 # • str : The original natural-language request.
 # • str : The name of the function to call.
 # • object : all required arguments with the correct types.
-class FunctionCallingName(BaseModel):
+class SelectedFunction(BaseModel):
     prompt: str
     fn_name: str | None
     args: Dict[str, Any]

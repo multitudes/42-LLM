@@ -3,40 +3,10 @@ import json
 import re
 
 from typing import List
-from .function_def_classes import FunctionDef
+from .function_def import FunctionDef
 from .tool_classes import Tool, ToolFunction, ToolParameter
-from .tool_classes import Tool, ToolFunction, ToolParameter
-from .output_classes import FunctionCallingName
+from .output_classes import SelectedFunction
 
-
-# def convert_func_to_tools(functions: List[FunctionDef]) -> List[Tool]:
-#     tools = []
-#     for fn in functions:
-#         properties = {name: {
-#             "type": "number" if fn.args_types[name] == "float"
-#             else "string" if fn.args_types[name] == "str"
-#             else "integer" if fn.args_types[name] == "int"
-#             else "any"} for name in fn.args_names}
-#         readable_name = fn.fn_name.replace('_', ' ')
-#         tool = Tool(
-#             function=ToolFunction(
-#                 name=fn.fn_name,
-#                 description=f"{readable_name} function",
-#                 parameters=ToolParameter(
-#                     properties=properties,
-#                     required=fn.args_names
-#                 )
-#             )
-#         )
-#         tools.append(tool.dict())
-#     return tools
-
-
-# def get_tools() -> List[Tool]:
-#     with open("exercise_input/functions_definition.json") as f:
-#         functions_raw = json.load(f)
-#     functions = [FunctionDef(**fn) for fn in functions_raw]
-#     return convert_func_to_tools(functions)
 
 def get_functions() -> List[FunctionDef]:
     try:
@@ -114,7 +84,7 @@ def convert_functions_to_tools(functions: List[FunctionDef]) -> str:
 def extract_json_from_response(
         prompt: str,
         response: str
-) -> FunctionCallingName | None:
+) -> SelectedFunction | None:
     """
     Extracts and parses a JSON object from the model's full output string.
 
@@ -122,27 +92,24 @@ def extract_json_from_response(
         prompt (str): The original natural-language request.
         response (str): The full output string from the model.
     Returns:
-        FunctionCallingName: The parsed FunctionCallingName object.
+        SelectedFunction: The parsed SelectedFunction object.
     """
     # First get rid of the think block if it exists
     think_tag = "</think>"
     if think_tag in response:
         response = response.split(think_tag, 1)[1].strip()
-    # This non-greedy regex looks for a string that starts with {"fn_name":
-    # and ends with the first possible "}}"
-    # The re.DOTALL flag allows the '.' to match newlines.
     pattern = r'\{\s*"fn_name":.*?\}\s*\}'
     match = re.search(pattern, response, re.DOTALL)
     if not match:
         print("No JSON object found in the response.")
-        return FunctionCallingName(prompt=prompt, fn_name="", args={})
+        return SelectedFunction(prompt=prompt, fn_name="", args={})
     json_str = match.group(0)
     try:
         data = json.loads(json_str)
         fn_name = data.get("fn_name")
         args = data.get("args", {})
         print(f"Extracted JSON: fn_name={fn_name}, args={args}")
-        return FunctionCallingName(prompt=prompt, fn_name=fn_name, args=args)
+        return SelectedFunction(prompt=prompt, fn_name=fn_name, args=args)
     except Exception as e:
         print(f"Error parsing JSON from response: {e}")
-        return FunctionCallingName(prompt=prompt, fn_name="", args={})
+        return SelectedFunction(prompt=prompt, fn_name="", args={})
