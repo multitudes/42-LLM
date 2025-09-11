@@ -5,7 +5,7 @@ import re
 import os
 
 from time import sleep
-from .output_classes import SelectedFunction
+from .schemas import SelectedFunction
 from .utils import get_prompts, get_functions, convert_functions_to_tools
 from .utils import extract_json_from_response
 from llm_sdk import Small_LLM_Model
@@ -174,7 +174,7 @@ Now, answer the following request. Only provide the JSON for the tool call.
 
         # llm_output = llm._decode(answer_ids)
         llm_output = custom_decode(answer_ids, id_to_token)
-        print("\llm_output:", llm_output)
+        print("\nllm output:", llm_output)
         result = extract_json_from_response(
             prompt, llm_output)
         output_to_write_to_file.append(result)
