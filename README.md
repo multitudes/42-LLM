@@ -111,8 +111,9 @@ you should place the llm_sdk package (folder or files) in your project’s root 
 
 
 ## debug info message when starting the model
-Q
+Q:
 What is this output i get as info when starting
+```
 d81485cdf75e47ca/generation_config.json
 Generate config GenerationConfig {
   "bos_token_id": 151643,
@@ -122,16 +123,17 @@ Generate config GenerationConfig {
     151643
   ],
   "pad_token_id": 151643,
+```
 A:
 This output is informational logging from the Hugging Face Transformers library (or a similar LLM SDK) when it loads the model's generation configuration.
 
-Here's what the fields mean:
+Here's what the fields mean:  
 
-bos_token_id: The "beginning of sequence" token ID (151643).
-eos_token_id: The "end of sequence" token IDs ([151645, 151643]). The model will stop generating when it outputs one of these IDs.
-pad_token_id: The "padding" token ID (151643), used to pad sequences to the same length.
-do_sample: Whether the model samples tokens (True) or always picks the most likely one (False).
-This config controls how the model generates text. It's normal to see this printed when initializing or running the model.
+- bos_token_id: The "beginning of sequence" token ID (151643).  
+- eos_token_id: The "end of sequence" token IDs ([151645, 151643]). The model will stop generating when it outputs one of these IDs.  
+- pad_token_id: The "padding" token ID (151643), used to pad sequences to the same length.  
+- do_sample: Whether the model samples tokens (True) or always picks the most likely one (False).  
+This config controls how the model generates text. It's normal to see this printed when initializing or running the model.  
 
 ## Resources
 https://flake8.pycqa.org/en/latest/index.html  
