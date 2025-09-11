@@ -15,7 +15,7 @@ run:
 	@uv run python -m src
 
 debug:
-	uv run python -m pdb -m src
+	@uv run python -m pdb -m src
 
 clean:
 	@echo "Removing .venv"
