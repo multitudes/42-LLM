@@ -6,47 +6,47 @@ from typing import List
 from .schemas import FunctionDefinition, SelectedFunction
 from .schemas import Tool, ToolFunction, ToolParameter
 
+PATH_TOOLS_DEFINITION = "exercise_input/functions_definition.json"
+
 
 def get_functions() -> List[FunctionDefinition]:
     try:
-        with open("exercise_input/functions_definition.json") as f:
+        with open(PATH_TOOLS_DEFINITION) as f:
             functions_raw = json.load(f)
         functions = [FunctionDefinition(**fn) for fn in functions_raw]
         return functions
     except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error loading functions: {e}")
-        return []
+        raise RuntimeError(f"Error loading functions for tools: {e}")
 
 
-def get_functions_names_for_prompt() -> List[str]:
+def get_prompts(file: str) -> List[str]:
+    """
+    Load prompts from a JSON file.
+    Each prompt should be under the "prompt" key.
+    Args:
+        file (str): Path to the JSON file containing the prompts.
+    Returns: List[str]: List of prompt strings.
+    Raises: RuntimeError: If there is an error loading the file
+        or parsing the JSON.
+    """
     try:
-        with open("exercise_input/functions_definition.json") as f:
-            functions_raw = json.load(f)
-        functions = [FunctionDefinition(**fn) for fn in functions_raw]
-        return [fn.fn_name for fn in functions]
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error loading functions names: {e}")
-        return []
-
-
-def get_prompts() -> List[str]:
-    try:
-        with open("exercise_input/function_calling_tests.json") as f:
+        with open(file) as f:
             prompts_raw = json.load(f)
         return [pr["prompt"] for pr in prompts_raw]
     except FileNotFoundError:
-        print("Error: function_calling_tests.json not found.")
-        return []
+        raise RuntimeError(f"Error: {file} not found.")
     except json.JSONDecodeError:
-        print("Error: JSON decode failed for function_calling_tests.json.")
-        return []
+        raise RuntimeError(f"Error: JSON decode failed for {file}.")
 
 
-def convert_functions_to_tools(functions: List[FunctionDefinition]) -> str:
+def get_tool_list() -> str:
     """
     Convert a list of FunctionDefinition objects to a JSON string
+    If the json conversion fails, a RuntimeError is raised because the
+    program cannot continue without a valid tools list.
     """
     tools = []
+    functions = get_functions()
     for fn in functions:
         # Build properties for each argument
         properties = {}
@@ -77,7 +77,10 @@ def convert_functions_to_tools(functions: List[FunctionDefinition]) -> str:
             )
         )
         tools.append(tool.dict())
-    return json.dumps(tools, indent=2)
+    try:
+        return json.dumps(tools, indent=2)
+    except Exception as e:
+        raise RuntimeError(f"Error converting tools to JSON: {e}")
 
 
 def extract_json_from_response(
@@ -86,6 +89,8 @@ def extract_json_from_response(
 ) -> SelectedFunction | None:
     """
     Extracts and parses a JSON object from the model's full output string.
+    If the model output does not contain valid JSON, returns an empty
+    SelectedFunction object with fn_name as an empty string.
 
     Args:
         prompt (str): The original natural-language request.

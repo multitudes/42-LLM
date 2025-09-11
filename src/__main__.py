@@ -2,11 +2,12 @@
 import json
 import os
 
-from .utils import get_prompts, get_functions, convert_functions_to_tools
+from .utils import get_prompts, get_tool_list
 from .utils import extract_json_from_response
 from llm_sdk import Small_LLM_Model
-from .bpe_tokenizer import bpe_tokenize, custom_decode
+from .bpe_tokenizer import initialize_tokenizer, bpe_tokenize, custom_decode
 
+INPUT_FILE = "exercise_input/function_calling_tests.json"
 MAX_TOKENS = 150
 
 
@@ -36,46 +37,22 @@ Now, answer the following request. Only provide the JSON for the tool call.
     )
 
 
-def main():
+def main(input_file: str = INPUT_FILE):
     """
-    I initialize the Small_LLM_Model from llm_sdk with the Qwen3-0.6B model
-    which is also the default model for that class.
-    I load the vocabulary from the model to get the token IDs.
-    From the input file I get the prompts.
-    The functions_definition.json file contains the list of functions that the
-    llm will choose from to answer the prompt.
-    They will be converted to a tool objects list using the
-    convert_functions_to_tools() function.
-    For each prompt I build the input_ids list with my own tokenizer.
-    """
-    llm = Small_LLM_Model(model_name="Qwen/Qwen3-0.6B")
+    Main entry point for function-calling LLM pipeline.
 
+    Args:
+        input_file (str, optional): Path to the prompts JSON file. Defaults to
+            "exercise_input/function_calling_tests.json".
+    """
+    llm = Small_LLM_Model()
     vocab_path = llm.get_path_to_vocabulary_json()
-    with open(vocab_path, "r") as f:
-        vocab = json.load(f)
-    # Add special tokens if missing
-    special_tokens = {
-        "<|im_start|>": 151644,
-        "<|im_end|>": 151645,
-        "<think>": 151667,
-        "</think>": 151668,
-    }
-    for tok, tid in special_tokens.items():
-        if tok not in vocab:
-            vocab[tok] = tid
-    # Load merges
-    with open("merges.txt", "r") as f:
-        merges = [line.strip().split()
-                  for line in f if not line.startswith("#")]
-
-    # Build merge ranks for fast lookup
-    merge_ranks = {tuple(merge): i for i, merge in enumerate(merges)}
+    vocab, merge_ranks = initialize_tokenizer(vocab_path)
     input_ids = []
     output_to_write_to_file = []
 
-    prompts = get_prompts()
-    functions = get_functions()
-    tools = convert_functions_to_tools(functions)
+    prompts = get_prompts(input_file)
+    tools = get_tool_list()
     # Reverse the vocab dict for ID to token lookup
     id_to_token = {v: k for k, v in vocab.items()}
 
