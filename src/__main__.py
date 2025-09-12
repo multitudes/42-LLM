@@ -27,19 +27,18 @@ def main(input_file: str = INPUT_FILE):
 
         for user_prompt in get_input_prompts(input_file):
             print(f"\n\nProcessing prompt: {user_prompt}")
-            user_prompt = create_prompt(user_prompt, tools)
+            llm_prompt = create_prompt(user_prompt, tools)
             # input_ids = llm._encode(final_prompt).tolist()[0]
             input_ids = bpe_tokenize(
-                user_prompt, vocab=vocab, merge_ranks=merge_ranks)
+                llm_prompt, vocab=vocab, merge_ranks=merge_ranks)
             answer_ids = get_answer_ids(llm, input_ids)
             # llm_output = llm._decode(answer_ids)
             llm_output = custom_decode(answer_ids, id_to_token)
             result = extract_json_from_response(
                 user_prompt, llm_output)
             outputs.append(result)
-
         write_output_to_file(outputs)
-    except RuntimeError as e:
+    except Exception as e:
         print(f"Fatal error: {e}")
         exit(1)
 

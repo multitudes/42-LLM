@@ -3,7 +3,6 @@ import re
 import json
 
 MAX_TOKENS = 150
-SPECIAL_TOKENS = ["<|im_start|>", "<|im_end|>", "<think>", "</think>"]
 END_TOKEN_ID1 = 3417
 END_TOKEN_ID2 = 30975
 MERGES_PATH = "merges.txt"

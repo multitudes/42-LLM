@@ -10,6 +10,8 @@ install:
 	else \
 		echo "uv project already initialized"; \
 	fi
+	@echo "Syncing dependencies with uv..."
+	@uv sync
 
 run:
 	@uv run python -m src
@@ -23,6 +25,8 @@ clean:
 	@echo "Removing __pycache__"
 	@rm -rf src/__pycache__
 	@rm -rf llm_sdk/__pycache__
+	@echo "Removing output"
+	@rm -rf output
 
 lint:
 	flake8 src
