@@ -142,7 +142,7 @@ def create_prompt(user_input: str, tools: str) -> str:
 Here are some examples:
 
 User: Multiply 45 by 11
-Assistant: {"fn_name": "fn_multiply_numbers", "args": {"a": 45, "b": 11}}
+Assistant: {"fn_name": "fn_multiply_numbers", "args": {"a": 45.0, "b": 11.0}}
 
 User: can you reverse the word 'banana'?
 Assistant: {"fn_name": "fn_reverse_string", "args": {"s": "banana"}}
