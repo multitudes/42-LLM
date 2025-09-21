@@ -94,6 +94,43 @@ def get_tool_list() -> str:
         raise RuntimeError(f"Error converting tools to JSON: {e}")
 
 
+def enforce_arg_types(fn_name, args, functions_def):
+    """
+    Sometimes the LLM returns a float as 1 instead of 1.0 for example.
+    Given a function name in the input requirements
+    and its arguments as strings, convert the argument
+    values to the correct types based on the function definitions.
+    If the function name is not found in the definitions,
+    or if an argument cannot be converted, it is left as is.
+    Args:
+        fn_name (str): The name of the function.
+        args (dict): The arguments from the LLM output as strings.
+        functions_def (List[dict]): List of function definitions
+        (tools) as dicts.
+    Returns:
+        dict: The arguments with values converted to the correct types.
+    """
+    # Find the function definition
+    fn_def = next((f for f in functions_def if f["fn_name"] == fn_name), None)
+    if not fn_def:
+        return args
+    for arg_name, arg_type in fn_def["args_types"].items():
+        if arg_name in args:
+            try:
+                if arg_type == "float":
+                    # print(f"Converting arg {arg_name} to float")
+                    args[arg_name] = float(args[arg_name])
+                    # print(f"Converted arg {arg_name}: {args[arg_name]}")
+                elif arg_type == "int":
+                    args[arg_name] = int(args[arg_name])
+                elif arg_type == "str":
+                    args[arg_name] = str(args[arg_name])
+                # Add more types as needed
+            except (ValueError, TypeError):
+                pass  # Leave as is if conversion fails
+    return args
+
+
 def extract_json_from_response(
         prompt: str,
         response: str
@@ -123,6 +160,11 @@ def extract_json_from_response(
         data = json.loads(json_str)
         fn_name = data.get("fn_name")
         args = data.get("args", {})
+        functions_def = get_functions()
+        # Convert to dicts for enforce_arg_types
+        functions_def_dicts = [fn.model_dump() for fn in functions_def]
+        args = enforce_arg_types(fn_name, args, functions_def_dicts)
+        print(f"Extracted function call: {fn_name} with args {args}")
         return SelectedFunction(prompt=prompt, fn_name=fn_name, args=args)
     except Exception as e:
         print(f"Error parsing JSON from response: {e}")
@@ -132,5 +174,5 @@ def extract_json_from_response(
 def write_output_to_file(output_to_write_to_file):
     os.makedirs("output", exist_ok=True)
     with open(OUTPUT_FILE, "w") as f:
-        json.dump([o.dict() for o in output_to_write_to_file], f)
-        # json.dump([o.model_dump() for o in output_to_write_to_file], f) # Use model_dump() instead of dict()
+        json.dump([o.model_dump() for o in output_to_write_to_file], f)
+        print(f"Output corrected and written to {OUTPUT_FILE}")
