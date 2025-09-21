@@ -162,9 +162,9 @@ def extract_json_from_response(
         args = data.get("args", {})
         functions_def = get_functions()
         # Convert to dicts for enforce_arg_types
-        functions_def_dicts = [fn.model_dump() for fn in functions_def]
+        functions_def_dicts = [fn.dict() for fn in functions_def]
         args = enforce_arg_types(fn_name, args, functions_def_dicts)
-        print(f"Extracted function call: {fn_name} with args {args}")
+        print(f"\ncheck args {args}")
         return SelectedFunction(prompt=prompt, fn_name=fn_name, args=args)
     except Exception as e:
         print(f"Error parsing JSON from response: {e}")
@@ -174,5 +174,5 @@ def extract_json_from_response(
 def write_output_to_file(output_to_write_to_file):
     os.makedirs("output", exist_ok=True)
     with open(OUTPUT_FILE, "w") as f:
-        json.dump([o.model_dump() for o in output_to_write_to_file], f)
+        json.dump([o.dict() for o in output_to_write_to_file], f)
         print(f"Output corrected and written to {OUTPUT_FILE}")
