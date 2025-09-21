@@ -1,16 +1,11 @@
 [
     {
-        "prompt": "What is the square root of 16?",
-        "fn_name": "fn_get_square_root",
+        "prompt": "Substitute the digits in the string 'Hello 34 I'm 233 years old' with 'NUMBERS'",
+        "fn_name": "fn_substitute_string_with_regex",
         "args": {
-            "a": 16
-        }
-    },
-    {
-        "prompt": "Reverse the string 'hello'",
-        "fn_name": "fn_reverse_string",
-        "args": {
-            "s": "hello"
+            "source_string": "Hello 34 I'm 233 years old",
+            "regex": "\\d+",
+            "replacement": "NUMBERS"
         }
     }
 ]

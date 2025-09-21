@@ -146,6 +146,9 @@ Assistant: {"fn_name": "fn_multiply_numbers", "args": {"a": 45.0, "b": 11.0}}
 
 User: can you reverse the word 'banana'?
 Assistant: {"fn_name": "fn_reverse_string", "args": {"s": "banana"}}
+
+User: Substitute the digits in the string 'Hello 34 I'm 233 years old' with 'NUMBERS'
+Assistant: {"fn_name": "fn_substitute_string_with_regex", "args": {"source_string": "Hello 34 I'm 233 years old", "regex": "\\\\d+", "replacement": "NUMBERS"}}
 ---
 
 Now, answer the following request. Only provide the JSON for the tool call.

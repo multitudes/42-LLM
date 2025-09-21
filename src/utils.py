@@ -118,6 +118,7 @@ def extract_json_from_response(
         print("No JSON object found in the response.")
         return SelectedFunction(prompt=prompt, fn_name="", args={})
     json_str = match.group(0)
+    # json_str = json_str.replace("'", '"')
     try:
         data = json.loads(json_str)
         fn_name = data.get("fn_name")
@@ -132,3 +133,4 @@ def write_output_to_file(output_to_write_to_file):
     os.makedirs("output", exist_ok=True)
     with open(OUTPUT_FILE, "w") as f:
         json.dump([o.dict() for o in output_to_write_to_file], f)
+        # json.dump([o.model_dump() for o in output_to_write_to_file], f) # Use model_dump() instead of dict()
