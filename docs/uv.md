@@ -6,36 +6,30 @@
 
 1. **Install `uv`** (if not already installed):
 ```zsh
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# or
 pipx install uv
 # or
 pip install uv
 ```
 
-2. **Create a virtual environment and install dependencies:**
-   ```zsh
-   uv venv .venv
-   uv pip install -r requirements.txt
-   ```
-Place your `requirements.txt` file in the root of your project directory—where your makefile, README.md, and `.venv` are located.
-
-**Example structure:**
+2. **Initialize a new uv project** (modern approach):
+```zsh
+uv init
 ```
-/Users/laurentb/Dev/42-LLM-test/
-├── makefile
-├── README.md
-├── requirements.txt   ← put it here
-├── src/
-├── uv.md
-└── .venv/
+This creates a `pyproject.toml` file for dependency management.
+
+3. **Add dependencies:**
+```zsh
+uv add torch transformers huggingface-hub
+uv add --dev flake8  # for development dependencies
 ```
 
-This allows `uv pip install -r requirements.txt` and `uv sync` to find and use it automatically.
-
-3. **Sync dependencies (recommended for reproducibility):**
-   ```zsh
-   uv sync
-   ```
-   This will install all dependencies listed in `requirements.txt` or `pyproject.toml`.
+4. **Install/sync dependencies:**
+```zsh
+uv sync
+```
+This installs all dependencies from `pyproject.toml` and creates/updates `uv.lock`.
 
 ## Running Your Project
 
@@ -46,40 +40,55 @@ uv run python -m src
 ```
 
 This command will:
-- Use the Python interpreter from your virtual environment (if activated).
-- Run the `src` module as the entry point.
+- Automatically use the correct Python interpreter and virtual environment
+- Run the `src` module as the entry point
+- No need to manually activate the virtual environment
 
 ## Common `uv` Commands
 
-- **Install a package:**
-  ```zsh
-  uv pip install <package>
-  ```
-- **List installed packages:**
-  ```zsh
-  uv pip list
-  ```
+- **Add a package:**
+```zsh
+uv add <package>
+```
+- **Add development dependency:**
+```zsh
+uv add --dev <package>
+```
 - **Remove a package:**
-  ```zsh
-  uv pip uninstall <package>
-  ```
+```zsh
+uv remove <package>
+```
+- **List installed packages:**
+```zsh
+uv tree
+```
 - **Run scripts:**
-  ```zsh
-  uv run python <script.py>
-  ```
+```zsh
+uv run python <script.py>
+```
+- **Sync dependencies:**
+```zsh
+uv sync
+```
+
+## Project Structure
+
+With modern `uv`, your project uses:
+- `pyproject.toml` - Project configuration and dependencies
+- `uv.lock` - Locked dependency versions for reproducibility
+- `.venv/` - Virtual environment (auto-created)
+
+No `requirements.txt` file is needed.
 
 ## Notes
-- Always activate your virtual environment before running commands:
-  ```zsh
-  source .venv/bin/activate
-  ```
-- The `uv run` command ensures your code runs in the correct environment.
-- For this project, all classes must use `pydantic` for validation, and you may use `numpy` and `json`.
-- Do **not** use forbidden packages (see README for details).
+- `uv run` automatically manages the virtual environment - no manual activation needed
+- The `uv.lock` file ensures reproducible builds across different machines
+- For this project, all classes must use `pydantic` for validation, and you may use `numpy` and `json`
+- Do **not** use forbidden packages (see README for details)
 
 ## References
-- [uv documentation](https://github.com/astral-sh/uv)
-- [pipx documentation](https://pipx.pypa.io/)
+- [uv documentation](https://docs.astral.sh/uv/)
+- [pyproject.toml specification](https://packaging.python.org/en/latest/specifications/pyproject-toml/)
 
 ---
-This guide explains how to use `uv` for Python projects as required by the 42-LLM-test project.
+This guide explains how to use modern `uv` for Python projects as required by the 42-LLM-test project.
