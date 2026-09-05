@@ -1,6 +1,8 @@
 # src/bpe_tokenizer.py
 import json
 import re
+from itertools import pairwise
+from pathlib import Path
 from typing import Any  # Replace with Small_LLM_Model if imported
 
 MAX_TOKENS = 150
@@ -17,98 +19,150 @@ SPECIAL_TOKENS = {
 # These token IDs to signal end of json generation '}}' and '\"}}"
 
 
-def initialize_tokenizer(vocab_path):
+def initialize_tokenizer(
+    vocab_path: str | Path,
+) -> tuple[dict[str, int], dict[tuple[str, str], int]]:
     """
-    Initialize the BPE tokenizer by loading the vocabulary and merge ranks
-    from the respective files. The merge_ranks is a dictionary mapping
-    token pairs to their rank (lower rank means higher priority for merging).
-    The special tokens are added to the vocabulary if not already present.
-    The merge.txt file is expected and eventually needs to be downloaded
-    from the same source as the vocab.json file. It contains the rules for
-    merging tokens during the BPE tokenization process.
-    Returns: vocab (dict): Mapping of tokens to their IDs.
-        merge_ranks (dict): Mapping of token pairs to their merge ranks.
-    Raises: RuntimeError: If there is an error loading the vocabulary
-        or merges file.
+    Initializes the BPE tokenizer by loading vocabulary and merge ranks.
+
+    Reads the vocabulary JSON file and the BPE merges text file, adds any missing
+    special tokens to the vocabulary, and builds the merge priority mapping.
+
+    Args:
+        vocab_path: Path to the vocabulary JSON file.
+
+    Returns:
+        A tuple containing:
+            - Vocabulary mapping token strings to integer IDs.
+            - Merge ranks mapping token pair tuples to their integer ranks.
+
+    Raises:
+        RuntimeError: If loading or parsing the vocabulary or merges file fails.
+
     """
+    path = Path(vocab_path)
+    merges_path = Path(MERGES_PATH)
+
+    # 1. Load vocabulary JSON
     try:
-        with open(vocab_path) as f:
-            vocab = json.load(f)
-    except Exception as e:
-        raise RuntimeError(f"Error loading vocabulary: {e}")
+        with path.open("r", encoding="utf-8") as f:
+            vocab: dict[str, int] = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
+        msg = f"Error loading vocabulary from {path}: {e}"
+        raise RuntimeError(msg) from e
+
+    # Ensure special tokens are included
     for tok, tid in SPECIAL_TOKENS.items():
         if tok not in vocab:
             vocab[tok] = tid
+
+    # 2. Load merge rules and build rank map
     try:
-        with open(MERGES_PATH) as f:
-            merges = [line.strip().split()
-                      for line in f if not line.startswith("#")]
-        merge_ranks = {tuple(merge): i for i, merge in enumerate(merges)}
-    except Exception as e:
-        raise RuntimeError(
-            f"Error loading merges.txt file needed for the tokenizer: {e}")
+        with merges_path.open("r", encoding="utf-8") as f:
+            merges = [
+                line.strip().split()
+                for line in f
+                if line.strip() and not line.startswith("#")
+            ]
+        merge_ranks: dict[tuple[str, str], int] = {
+            (m[0], m[1]): i for i, m in enumerate(merges) if len(m) == 2
+        }
+    except (FileNotFoundError, OSError, IndexError) as e:
+        msg = f"Error loading merges file from {merges_path}: {e}"
+        raise RuntimeError(msg) from e
+
     return vocab, merge_ranks
 
 
-def get_pairs(tokens):
+def get_pairs(tokens: list[str]) -> set[tuple[str, str]]:
     """
-    Return set of adjacent token pairs.
+    Returns a set of adjacent token pairs from a list of tokens.
+
+    Args:
+        tokens: List of string tokens.
+
+    Returns:
+        Set of tuples containing adjacent token pairs.
+
     """
-    return {(tokens[i], tokens[i+1]) for i in range(len(tokens)-1)}
+    return set(pairwise(tokens))
 
 
-def preprocess_for_bpe(text):
+def preprocess_for_bpe(text: str) -> str:
     """
-    Preprocess text for BPE tokenization by replacing spaces,
-    newlines, and tabs for consistent tokenization.
+    Preprocesses text for BPE tokenization by mapping whitespace characters.
+
+    Replaces spaces, newlines, and tabs with special byte-level BPE sequence
+    markers (`Ġ`, `Ċ`, `ĉ`).
+
+    Args:
+        text: Raw input text string to format.
+
+    Returns:
+        Text string with whitespace replaced by BPE sequence markers.
+
     """
-    text = text.replace(" ", "Ġ")
-    text = text.replace("\n", "Ċ")
-    text = text.replace("\t", "ĉ")
-    return text
+    return text.replace(" ", "Ġ").replace("\n", "Ċ").replace("\t", "ĉ")
 
 
-def bpe_tokenize(text, vocab, merge_ranks):
+def bpe_tokenize(
+    text: str,
+    vocab: dict[str, int],
+    merge_ranks: dict[tuple[str, str], int],
+) -> list[int]:
     """
-    A simple BPE tokenizer implementation.
-    This function tokenizes the input text using Byte Pair Encoding (BPE)
-    based on the provided vocabulary and merge ranks.
-    There are some special tokens that are needed for the prompt structure
-    that should be treated as single tokens and not split further like:
-    151644: <|im_start|>
-    151645: <|im_end|>
+    Tokenizes input text using Byte Pair Encoding (BPE).
+
+    Splits text while preserving special tokens (e.g., prompt control tags),
+    iteratively merges token pairs according to `merge_ranks`, and maps
+    the final tokens to their vocabulary IDs.
+
+    Args:
+        text: The raw input text string to tokenize.
+        vocab: Mapping from token strings to integer vocabulary IDs.
+        merge_ranks: Mapping from token pair tuples to their merge rank.
+
+    Returns:
+        List of mapped integer token IDs.
+
     """
-    pattern = "(" + "|".join(
-        re.escape(tok) for tok in SPECIAL_TOKENS.keys()) + ")"
-    parts = re.split(pattern, text)
-    tokens = []
+    if SPECIAL_TOKENS:
+        pattern = f"({'|'.join(re.escape(tok) for tok in SPECIAL_TOKENS)})"
+        parts = [p for p in re.split(pattern, text) if p]
+    else:
+        parts = [text]
+
+    tokens: list[str] = []
     for part in parts:
         if part in SPECIAL_TOKENS:
             tokens.append(part)
         else:
-            tokens.extend(list(preprocess_for_bpe(part)))
+            tokens.extend(preprocess_for_bpe(part))
+
     while True:
         pairs = get_pairs(tokens)
-        # Find the best pair to merge
         min_rank = float("inf")
-        best_pair = None
+        best_pair: tuple[str, str] | None = None
+
         for pair in pairs:
             if pair in merge_ranks and merge_ranks[pair] < min_rank:
                 min_rank = merge_ranks[pair]
                 best_pair = pair
+
         if best_pair is None:
             break
-        # Merge all occurrences of the best pair
-        new_tokens = []
+
+        new_tokens: list[str] = []
         i = 0
         while i < len(tokens):
-            if i < len(tokens) - 1 and (tokens[i], tokens[i+1]) == best_pair:
-                new_tokens.append(tokens[i] + tokens[i+1])
+            if i < len(tokens) - 1 and (tokens[i], tokens[i + 1]) == best_pair:
+                new_tokens.append(tokens[i] + tokens[i + 1])
                 i += 2
             else:
                 new_tokens.append(tokens[i])
                 i += 1
         tokens = new_tokens
+
     return [vocab[token] for token in tokens if token in vocab]
 
 
