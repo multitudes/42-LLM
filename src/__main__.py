@@ -1,9 +1,19 @@
 # src/__main__.py
 from llm_sdk import Small_LLM_Model
-from .utils import get_input_prompts, get_tool_list, write_output_to_file
-from .utils import extract_json_from_response
-from .bpe_tokenizer import initialize_tokenizer, bpe_tokenize, custom_decode
-from .bpe_tokenizer import get_answer_ids, create_prompt
+
+from .bpe_tokenizer import (
+    bpe_tokenize,
+    create_prompt,
+    custom_decode,
+    get_answer_ids,
+    initialize_tokenizer,
+)
+from .utils import (
+    extract_json_from_response,
+    get_input_prompts,
+    get_tool_list,
+    write_output_to_file,
+)
 
 INPUT_FILE = "exercise_input/function_calling_tests.json"
 
@@ -15,10 +25,11 @@ def main(input_file: str = INPUT_FILE):
     Args:
         input_file (str, optional): Path to the prompts JSON file. Defaults to
             "exercise_input/function_calling_tests.json".
+
     """
     try:
         llm = Small_LLM_Model()
-        vocab_path = llm.get_path_to_vocabulary_json()
+        vocab_path = llm.get_path_to_tokenizer_file()
         vocab, merge_ranks = initialize_tokenizer(vocab_path)
         outputs = []
         tools = get_tool_list()

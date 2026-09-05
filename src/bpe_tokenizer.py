@@ -1,6 +1,7 @@
 # src/bpe_tokenizer.py
-import re
 import json
+import re
+from typing import Any  # Replace with Small_LLM_Model if imported
 
 MAX_TOKENS = 150
 SPECIAL_TOKENS = ["<|im_start|>", "<|im_end|>", "<think>", "</think>"]
@@ -31,7 +32,7 @@ def initialize_tokenizer(vocab_path):
         or merges file.
     """
     try:
-        with open(vocab_path, "r") as f:
+        with open(vocab_path) as f:
             vocab = json.load(f)
     except Exception as e:
         raise RuntimeError(f"Error loading vocabulary: {e}")
@@ -39,7 +40,7 @@ def initialize_tokenizer(vocab_path):
         if tok not in vocab:
             vocab[tok] = tid
     try:
-        with open(MERGES_PATH, "r") as f:
+        with open(MERGES_PATH) as f:
             merges = [line.strip().split()
                       for line in f if not line.startswith("#")]
         merge_ranks = {tuple(merge): i for i, merge in enumerate(merges)}
@@ -89,7 +90,7 @@ def bpe_tokenize(text, vocab, merge_ranks):
     while True:
         pairs = get_pairs(tokens)
         # Find the best pair to merge
-        min_rank = float('inf')
+        min_rank = float("inf")
         best_pair = None
         for pair in pairs:
             if pair in merge_ranks and merge_ranks[pair] < min_rank:
@@ -111,80 +112,109 @@ def bpe_tokenize(text, vocab, merge_ranks):
     return [vocab[token] for token in tokens if token in vocab]
 
 
-def custom_decode(ids, id_to_token):
+def custom_decode(
+    ids: list[int],
+    id_to_token: dict[int, str],
+) -> str:
     """
-    Custom decode function to convert token IDs back to text.
-    There are some special token IDS that we want to skip in the response:
-    151667: <think>
-    151668: </think>
-    See SPECIAL_TOKENS dictionary above for reference.
-    Those tokens are not included in the vocab dictionary we use for decoding.
+    Converts a sequence of token IDs back into a decoded text string.
+
+    Filters out special token IDs defined in `SPECIAL_TOKENS` (such as think tags),
+    replaces missing tokens with `<unk>`, and converts byte-level BPE whitespace
+    markers back to standard spaces and line breaks.
+
+    Args:
+        ids: List of token IDs to decode.
+        id_to_token: Mapping of token IDs to their corresponding token strings.
+
+    Returns:
+        The decoded string representation.
+
     """
     skip_ids = set(SPECIAL_TOKENS.values())
     tokens = [id_to_token.get(i, "<unk>") for i in ids if i not in skip_ids]
+
     text = "".join(tokens)
     text = text.replace("Ġ", " ").replace("Ċ", "\n").replace("ĉ", "\t")
-    print("\n\nllm output:", text, end="")
+
+    print(f"\n\nllm output: {text}", end="")
     return text
 
 
 def create_prompt(user_input: str, tools: str) -> str:
     """
-    Create the prompt for the LLM based on user input and available tools.
+    Creates the prompt for the LLM based on user input and available tools.
+
+    Args:
+        user_input: The natural language request from the user.
+        tools: JSON string describing available tools.
+
+    Returns:
+        Formatted chat prompt string ready for inference.
+
     """
-    system_msg = "You are a helpful assistant that uses tools. "
-    system_msg += "Based on the user's request, you must call the "
-    system_msg += "appropriate tool with the correct arguments. "
-    system_msg += "You have access to the following tools:\n"
-    system_msg += f"{tools}"
-    system_msg += """
----
-Here are some examples:
+    system_msg = (
+        "You are a helpful assistant that uses tools. "
+        "Based on the user's request, you must call the "
+        "appropriate tool with the correct arguments. "
+        f"You have access to the following tools:\n{tools}\n\n"
+        "---\n"
+        "Here are some examples:\n\n"
+        "User: Multiply 45 by 11\n"
+        'Assistant: {"fn_name": "fn_multiply_numbers", "args": {"a": 45.0, "b": 11.0}}\n\n'
+        "User: can you reverse the word 'banana'?\n"
+        'Assistant: {"fn_name": "fn_reverse_string", "args": {"s": "banana"}}\n\n'
+        "User: Substitute the digits in the string\n"
+        "'Hello 34 I'm 233 years old' with 'NUMBERS'\n"
+        'Assistant: {"fn_name": "fn_substitute_string_with_regex", '
+        '"args": {"source_string": "Hello 34 I\'m 233 years old", '
+        '"regex": "\\\\d+", "replacement": "NUMBERS"}}\n'
+        "---\n\n"
+        "Now, answer the following request. Only provide the JSON for the tool call."
+    )
 
-User: Multiply 45 by 11
-Assistant: {"fn_name": "fn_multiply_numbers", "args": {"a": 45.0, "b": 11.0}}
-
-User: can you reverse the word 'banana'?
-Assistant: {"fn_name": "fn_reverse_string", "args": {"s": "banana"}}
-
-User: Substitute the digits in the string
-'Hello 34 I'm 233 years old' with 'NUMBERS'
-Assistant: {"fn_name": "fn_substitute_string_with_regex",
-"args": {"source_string": "Hello 34 I'm 233 years old",
-"regex": "\\\\d+", "replacement": "NUMBERS"}}
----
-
-Now, answer the following request. Only provide the JSON for the tool call.
-"""
     return (
         f"<|im_start|>system\n{system_msg}<|im_end|>\n"
         f"<|im_start|>user\n{user_input}/no_think<|im_end|>\n"
-        f"<|im_start|>assistant\n"
+        "<|im_start|>assistant\n"
     )
 
 
-def get_answer_ids(llm, input_ids):
+def get_answer_ids(
+    llm: Any,
+    input_ids: list[int],
+) -> list[int]:
     """
-    The llmm takes a list of input token ids and generates
-    a list of logits for the next token at each step.
-    The next token is chosen as the one with the highest logit,
-    and appended to the input_ids for the next generation.
-    At the same time I am interested in collecting the
-    generated token ids to decode later in answer_ids.
-    args:
-        llm: instance of Small_LLM_Model class
-        input_ids: list of input token ids (integers)
-    returns: list of generated token ids (integers)
-    The generation stops when either the maximum number of tokens
-    is reached or when the end token is generated.
+    Generates token IDs sequentially using the language model's logits.
+
+    The model generates logits for the next token at each step. The token with
+    the highest logit value is selected and appended to `input_ids` for subsequent
+    generation. Generation stops when reaching `MAX_TOKENS` or an end token.
+
+    Args:
+        llm: Instance of the language model class.
+        input_ids: List of input token IDs as integers. This list is modified
+            in-place during generation.
+
+    Returns:
+        List of generated answer token IDs.
+
     """
-    answer_ids = []
+    answer_ids: list[int] = []
+    stop_tokens = {END_TOKEN_ID1, END_TOKEN_ID2}
+
     for _ in range(MAX_TOKENS):
         print(".", end="", flush=True)
         logits = llm.get_logits_from_input_ids(input_ids)
+
+        # Get token index with the highest logit
         next_token_id = max(enumerate(logits), key=lambda x: x[1])[0]
+
         input_ids.append(next_token_id)
         answer_ids.append(next_token_id)
-        if (next_token_id == END_TOKEN_ID1 or next_token_id == END_TOKEN_ID2):
+
+        # Fixes PLR1714
+        if next_token_id in stop_tokens:
             break
+
     return answer_ids

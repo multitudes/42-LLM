@@ -25,6 +25,10 @@ clean:
 	@rm -rf llm_sdk/__pycache__
 
 lint:
-	flake8 src
+	uv run flake8 src
+	uv run mypy .
+
+lint-strict: 
+	flake8 . mypy . --strict
 
 PHONY: install run debug clean lint

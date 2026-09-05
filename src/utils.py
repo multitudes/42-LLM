@@ -1,66 +1,111 @@
 # src/utils.py
 import json
 import re
-import os
+from pathlib import Path
+from typing import Any
 
-from typing import List
-from .schemas import FunctionDefinition, SelectedFunction
-from .schemas import Tool, ToolFunction, ToolParameter
+from .schemas import (
+    FunctionDefinition,
+    SelectedFunction,
+    Tool,
+    ToolFunction,
+    ToolParameter,
+)
 
 OUTPUT_FILE = "output/function_calling_name.json"
 TOOLS_DEFINITION_FILE = "exercise_input/functions_definition.json"
 THINK_TAG = "</think>"
 
 
-def get_functions() -> List[FunctionDefinition]:
+def get_functions() -> list[FunctionDefinition]:
     """
-    The functions to load are actually the ones defined in the
-    PATH_TOOLS_DEFINITION file. Those are converted to
-    FunctionDefinition objects and returned as a list.
-    Raises: RuntimeError: If there is an error loading the file
-        or parsing the JSON because the program cannot continue without
-        a valid functions list.
+    Loads function definitions from the tools definition file.
+
+    Reads raw JSON tool definitions from `TOOLS_DEFINITION_FILE` and converts
+    them into a list of `FunctionDefinition` objects.
+
+    Returns:
+        List of instantiated `FunctionDefinition` objects.
+
+    Raises:
+        RuntimeError: If loading the file, decoding JSON, or instantiating
+            `FunctionDefinition` objects fails.
+
     """
+    tools_path = Path(TOOLS_DEFINITION_FILE)
     try:
-        with open(TOOLS_DEFINITION_FILE) as f:
+        with tools_path.open("r", encoding="utf-8") as f:
             functions_raw = json.load(f)
-        functions = [FunctionDefinition(**fn) for fn in functions_raw]
-        return functions
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        raise RuntimeError(f"Error loading functions for tools: {e}")
 
+    except (FileNotFoundError, json.JSONDecodeError, TypeError, ValueError) as e:
+        msg = f"Error loading functions for tools: {e}"
+        raise RuntimeError(msg) from e
 
-def get_input_prompts(file: str) -> List[str]:
-    """
-    Load the prompts from a JSON file.
-    Each prompt should be under the "prompt" key.
-    Args:
-        file (str): Path to the JSON file containing the prompts.
-    Returns: List[str]: List of prompt strings.
-    Raises: RuntimeError: If there is an error loading the file
-        or parsing the JSON.
-    """
+    if not isinstance(functions_raw, list):
+        actual_type = type(functions_raw).__name__
+        msg = (
+            f"Error: Expected a list in {tools_path}, "
+            f"got {actual_type}."
+        )
+        raise TypeError(msg)
+
     try:
-        with open(file) as f:
+        return [FunctionDefinition(**fn) for fn in functions_raw]
+    except (TypeError, ValueError) as e:
+        msg = f"Error loading functions for tools: {e}"
+        raise RuntimeError(msg) from e
+
+
+def get_input_prompts(file: str | Path) -> list[str]:
+    """
+    Loads prompts from a JSON file.
+
+    Each prompt in the JSON structure is expected to be under the "prompt" key.
+
+    Args:
+        file: Path to the JSON file containing the prompts.
+
+    Returns:
+        List of prompt strings.
+
+    Raises:
+        RuntimeError: If the file is not found, JSON decoding fails, or
+            the expected schema is invalid.
+
+    """
+    file_path = Path(file)
+    try:
+        with file_path.open("r", encoding="utf-8") as f:
             prompts_raw = json.load(f)
         return [pr["prompt"] for pr in prompts_raw]
-    except FileNotFoundError:
-        raise RuntimeError(f"Error: {file} not found.")
-    except json.JSONDecodeError:
-        raise RuntimeError(f"Error: JSON decode failed for {file}.")
+
+    except FileNotFoundError as e:
+        msg = f"Error: {file_path} not found."
+        raise RuntimeError(msg) from e
+    except json.JSONDecodeError as e:
+        msg = f"Error: JSON decode failed for {file_path}."
+        raise RuntimeError(msg) from e
+    except (KeyError, TypeError) as e:
+        msg = f"Error: Invalid prompt format in {file_path}."
+        raise RuntimeError(msg) from e
 
 
 def get_tool_list() -> str:
     """
-    Convert a list of FunctionDefinition objects to a JSON string
-    If the json conversion fails, a RuntimeError is raised because the
-    program cannot continue without a valid tools list.
+    Converts a list of FunctionDefinition objects to a JSON string.
+
+    Returns:
+        A formatted JSON string representation of the tools list.
+
+    Raises:
+        RuntimeError: If converting tools to JSON fails.
+
     """
-    tools = []
+    tools: list[dict[str, Any]] = []
     functions = get_functions()
     for fn in functions:
         # Build properties for each argument
-        properties = {}
+        properties: dict[str, dict[str, str]] = {}
         for name in fn.args_names:
             arg_type = fn.args_types[name]
             if arg_type == "float":
@@ -72,49 +117,61 @@ def get_tool_list() -> str:
             else:
                 type_str = "any"
             properties[name] = {"type": type_str}
+
         # Create a readable description from the function name
-        readable_name = fn.fn_name
-        if readable_name.startswith("fn_"):
-            readable_name = readable_name[3:]
-        description = readable_name.replace('_', ' ') + " function"
+        readable_name = fn.fn_name.removeprefix("fn_")
+        description = f"{readable_name.replace('_', ' ')} function"
         tool = Tool(
             function=ToolFunction(
                 name=fn.fn_name,
                 description=description,
                 parameters=ToolParameter(
                     properties=properties,
-                    required=fn.args_names
-                )
-            )
+                    required=fn.args_names,
+                ),
+            ),
         )
-        tools.append(tool.dict())
+        # Use model_dump() for Pydantic v2 (or dict() if using Pydantic v1)
+        tools.append(tool.model_dump())
+
     try:
         return json.dumps(tools, indent=2)
-    except Exception as e:
-        raise RuntimeError(f"Error converting tools to JSON: {e}")
+    except (TypeError, ValueError) as e:
+        msg = f"Error converting tools to JSON: {e}"
+        raise RuntimeError(msg) from e
 
 
-def enforce_arg_types(fn_name, args, functions_def):
+def enforce_arg_types(fn_name: str,
+                      args: dict[str, Any],
+                      functions_def: list[dict[str, Any]],
+                      ) -> dict[str, Any]:
     """
-    Sometimes the LLM returns a float as 1 instead of 1.0 for example.
-    Given a function name in the input requirements
-    and its arguments as strings, convert the argument
-    values to the correct types based on the function definitions.
-    If the function name is not found in the definitions,
-    or if an argument cannot be converted, it is left as is.
+    Converts argument values to their defined types based on function definitions.
+
+    Sometimes the LLM returns a float as 1 instead of 1.0. Given a function
+    name and its arguments, convert the argument values to the correct types
+    based on the tool definitions. If the function name is not found or an
+    argument cannot be converted, it is left unchanged.
+
     Args:
-        fn_name (str): The name of the function.
-        args (dict): The arguments from the LLM output as strings.
-        functions_def (List[dict]): List of function definitions
-        (tools) as dicts.
+        fn_name: The name of the function to look up.
+        args: Dictionary of argument names and their values.
+        functions_def: List of function definition dictionaries (tools).
+
     Returns:
-        dict: The arguments with values converted to the correct types.
+        Dictionary with argument values converted to their expected types.
+
     """
-    # Find the function definition
-    fn_def = next((f for f in functions_def if f["fn_name"] == fn_name), None)
-    if not fn_def:
+    fn_def = next(
+        (f for f in functions_def if f.get("fn_name") == fn_name), None)
+    if not fn_def or "args_types" not in fn_def:
         return args
-    for arg_name, arg_type in fn_def["args_types"].items():
+
+    args_types = fn_def["args_types"]
+    if not isinstance(args_types, dict):
+        return args
+
+    for arg_name, arg_type in args_types.items():
         if arg_name in args:
             try:
                 if arg_type == "float":
@@ -125,54 +182,80 @@ def enforce_arg_types(fn_name, args, functions_def):
                     args[arg_name] = int(args[arg_name])
                 elif arg_type == "str":
                     args[arg_name] = str(args[arg_name])
-                # Add more types as needed
+        # Add more types as needed
             except (ValueError, TypeError):
                 pass  # Leave as is if conversion fails
+
     return args
 
 
 def extract_json_from_response(
-        prompt: str,
-        response: str
-) -> SelectedFunction | None:
+    prompt: str,
+    response: str,
+) -> SelectedFunction:
     """
     Extracts and parses a JSON object from the model's full output string.
-    If the model output does not contain valid JSON, returns an empty
-    SelectedFunction object with fn_name as an empty string.
+
+    If the model output does not contain valid JSON or fails to parse, returns an
+    empty SelectedFunction object with fn_name set to an empty string.
 
     Args:
-        prompt (str): The original natural-language request.
-        response (str): The full output string from the model.
+        prompt: The original natural-language request.
+        response: The full output string from the model.
+
     Returns:
-        SelectedFunction: The parsed SelectedFunction object.
+        The parsed SelectedFunction object.
+
     """
     # First get rid of the think block if it exists
     if THINK_TAG in response:
         response = response.split(THINK_TAG, 1)[1].strip()
+
     pattern = r'\{\s*"fn_name":.*?\}\s*\}'
     match = re.search(pattern, response, re.DOTALL)
     if not match:
         print("No JSON object found in the response.")
         return SelectedFunction(prompt=prompt, fn_name="", args={})
+
     json_str = match.group(0)
-    # json_str = json_str.replace("'", '"')
+
     try:
         data = json.loads(json_str)
-        fn_name = data.get("fn_name")
+
+        # Ensure the parsed output is actually a dictionary
+        if not isinstance(data, dict):
+            print("Parsed JSON is not a dictionary.")
+            return SelectedFunction(prompt=prompt, fn_name="", args={})
+
+        fn_name = str(data.get("fn_name", ""))
+
         args = data.get("args", {})
+        if not isinstance(args, dict):
+            args = {}
         functions_def = get_functions()
         # Convert to dicts for enforce_arg_types
         functions_def_dicts = [fn.dict() for fn in functions_def]
         args = enforce_arg_types(fn_name, args, functions_def_dicts)
         print(f"\ncheck args {args}")
         return SelectedFunction(prompt=prompt, fn_name=fn_name, args=args)
-    except Exception as e:
+    # Catches only JSON decoding and schema structure errors (Fixes BLE001)
+    except (json.JSONDecodeError, TypeError, ValueError, AttributeError)as e:
         print(f"Error parsing JSON from response: {e}")
         return SelectedFunction(prompt=prompt, fn_name="", args={})
 
 
-def write_output_to_file(output_to_write_to_file):
-    os.makedirs("output", exist_ok=True)
-    with open(OUTPUT_FILE, "w") as f:
-        json.dump([o.dict() for o in output_to_write_to_file], f)
-        print(f"Output corrected and written to {OUTPUT_FILE}")
+def write_output_to_file(output_to_write_to_file: list[Any]) -> None:
+    """
+    Writes the processed output list to a JSON file.
+
+    Args:
+        output_to_write_to_file: List of objects (e.g., Pydantic models)
+        to serialize and save.
+
+    """
+    output_path = Path(OUTPUT_FILE)
+    # Ensure parent directory exists (replaces os.makedirs)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as f:
+        json.dump([o.dict() for o in output_to_write_to_file], f, indent=2)
+    print(f"Output corrected and written to {OUTPUT_FILE}")

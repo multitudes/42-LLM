@@ -1,9 +1,10 @@
 # 42-LLM-test
 A project for 42-Global with python and alms
 
-
 ## Common Instructions
-General Rules
+
+General Rules:
+
 - Your project must be written in Python 3.11 or later.
 - Your project must adhere to the flake8 coding standard. Bonus files are also subject to this standard.
 - Your functions should handle exceptions gracefully to avoid crashes. Use try-except
@@ -13,6 +14,7 @@ during the review, it will be considered non-functional.
 leaks.
 
 ## Makefile
+
 Include a Makefile in your project to automate common tasks. It must contain the following
 
 rules:

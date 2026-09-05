@@ -11,7 +11,7 @@ input_ids = llm._tokenizer.encode(prompt, add_special_tokens=False)
 logits = llm.get_logits_from_input_ids(input_ids)
 print("Logits for next token:", logits)
 
-vocab_path = llm.get_path_to_vocabulary_json()
+vocab_path = llm.get_path_to_tokenizer_file()
 print("Vocabulary file path:", vocab_path)
 ```
 ```
