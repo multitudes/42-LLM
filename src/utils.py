@@ -37,7 +37,10 @@ def get_functions() -> list[FunctionDefinition]:
         with tools_path.open("r", encoding="utf-8") as f:
             functions_raw = json.load(f)
 
-    except (FileNotFoundError, json.JSONDecodeError, TypeError, ValueError) as e:
+    except (FileNotFoundError,
+            json.JSONDecodeError,
+            TypeError,
+            ValueError) as e:
         msg = f"Error loading functions for tools: {e}"
         raise RuntimeError(msg) from e
 
@@ -146,7 +149,7 @@ def enforce_arg_types(fn_name: str,
                       functions_def: list[dict[str, Any]],
                       ) -> dict[str, Any]:
     """
-    Converts argument values to their defined types based on function definitions.
+    Converts argument values to their defined types based on function def.
 
     Sometimes the LLM returns a float as 1 instead of 1.0. Given a function
     name and its arguments, convert the argument values to the correct types
@@ -196,8 +199,8 @@ def extract_json_from_response(
     """
     Extracts and parses a JSON object from the model's full output string.
 
-    If the model output does not contain valid JSON or fails to parse, returns an
-    empty SelectedFunction object with fn_name set to an empty string.
+    If the model output does not contain valid JSON or fails to parse, returns
+    an empty SelectedFunction object with fn_name set to an empty string.
 
     Args:
         prompt: The original natural-language request.

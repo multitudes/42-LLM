@@ -3,12 +3,13 @@ import json
 import re
 from itertools import pairwise
 from pathlib import Path
-from typing import Any  # Replace with Small_LLM_Model if imported
+from typing import Any, cast
 
 MAX_TOKENS = 150
-SPECIAL_TOKENS = ["<|im_start|>", "<|im_end|>", "<think>", "</think>"]
+# SPECIAL_TOKENS = ["<|im_start|>", "<|im_end|>", "<think>", "</think>"]
 END_TOKEN_ID1 = 3417
 END_TOKEN_ID2 = 30975
+EXPECTED_MERGE_TOKENS = 2
 MERGES_PATH = "merges.txt"
 SPECIAL_TOKENS = {
     "<|im_start|>": 151644,
@@ -25,8 +26,9 @@ def initialize_tokenizer(
     """
     Initializes the BPE tokenizer by loading vocabulary and merge ranks.
 
-    Reads the vocabulary JSON file and the BPE merges text file, adds any missing
-    special tokens to the vocabulary, and builds the merge priority mapping.
+    Reads the vocabulary JSON file and the BPE merges text file, adds any
+    missing special tokens to the vocabulary, and builds the merge priority
+    mapping.
 
     Args:
         vocab_path: Path to the vocabulary JSON file.
@@ -37,7 +39,8 @@ def initialize_tokenizer(
             - Merge ranks mapping token pair tuples to their integer ranks.
 
     Raises:
-        RuntimeError: If loading or parsing the vocabulary or merges file fails.
+        RuntimeError: If loading or parsing the vocabulary or merges file
+        fails.
 
     """
     path = Path(vocab_path)
@@ -46,7 +49,8 @@ def initialize_tokenizer(
     # 1. Load vocabulary JSON
     try:
         with path.open("r", encoding="utf-8") as f:
-            vocab: dict[str, int] = json.load(f)
+            # cast() ensures strict mypy passing, since json.load returns 'Any'
+            vocab: dict[str, int] = cast("dict[str, int]", json.load(f))
     except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
         msg = f"Error loading vocabulary from {path}: {e}"
         raise RuntimeError(msg) from e
@@ -65,7 +69,8 @@ def initialize_tokenizer(
                 if line.strip() and not line.startswith("#")
             ]
         merge_ranks: dict[tuple[str, str], int] = {
-            (m[0], m[1]): i for i, m in enumerate(merges) if len(m) == 2
+            (m[0], m[1]): i for i, m in enumerate(merges)
+            if len(m) == EXPECTED_MERGE_TOKENS
         }
     except (FileNotFoundError, OSError, IndexError) as e:
         msg = f"Error loading merges file from {merges_path}: {e}"
@@ -173,9 +178,10 @@ def custom_decode(
     """
     Converts a sequence of token IDs back into a decoded text string.
 
-    Filters out special token IDs defined in `SPECIAL_TOKENS` (such as think tags),
-    replaces missing tokens with `<unk>`, and converts byte-level BPE whitespace
-    markers back to standard spaces and line breaks.
+    Filters out special token IDs defined in `SPECIAL_TOKENS`
+    (such as think tags), replaces missing tokens with `<unk>`,
+    and converts byte-level BPE whitespace markers back to standard
+    spaces and line breaks.
 
     Args:
         ids: List of token IDs to decode.
@@ -215,16 +221,19 @@ def create_prompt(user_input: str, tools: str) -> str:
         "---\n"
         "Here are some examples:\n\n"
         "User: Multiply 45 by 11\n"
-        'Assistant: {"fn_name": "fn_multiply_numbers", "args": {"a": 45.0, "b": 11.0}}\n\n'
+        'Assistant: {"fn_name": "fn_multiply_numbers", '
+        '"args": {"a": 45.0, "b": 11.0}}\n\n'
         "User: can you reverse the word 'banana'?\n"
-        'Assistant: {"fn_name": "fn_reverse_string", "args": {"s": "banana"}}\n\n'
+        'Assistant: {"fn_name": "fn_reverse_string", '
+        '"args": {"s": "banana"}}\n\n'
         "User: Substitute the digits in the string\n"
         "'Hello 34 I'm 233 years old' with 'NUMBERS'\n"
         'Assistant: {"fn_name": "fn_substitute_string_with_regex", '
         '"args": {"source_string": "Hello 34 I\'m 233 years old", '
         '"regex": "\\\\d+", "replacement": "NUMBERS"}}\n'
         "---\n\n"
-        "Now, answer the following request. Only provide the JSON for the tool call."
+        "Now, answer the following request. Only provide the JSON for "
+        "the tool call."
     )
 
     return (
@@ -242,8 +251,9 @@ def get_answer_ids(
     Generates token IDs sequentially using the language model's logits.
 
     The model generates logits for the next token at each step. The token with
-    the highest logit value is selected and appended to `input_ids` for subsequent
-    generation. Generation stops when reaching `MAX_TOKENS` or an end token.
+    the highest logit value is selected and appended to `input_ids` for
+    subsequent generation. Generation stops when reaching `MAX_TOKENS` or an
+    end token.
 
     Args:
         llm: Instance of the language model class.
