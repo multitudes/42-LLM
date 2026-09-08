@@ -17,6 +17,9 @@ install:
 run:
 	uv run python -m src
 
+test:
+	uv run pytest -v
+
 debug:
 	uv run python -m pdb -m src
 
