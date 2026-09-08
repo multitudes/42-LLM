@@ -46,11 +46,18 @@ def initialize_tokenizer(
     path = Path(vocab_path)
     merges_path = Path(MERGES_PATH)
 
-    # 1. Load vocabulary JSON
+# 1. Load vocabulary JSON
     try:
         with path.open("r", encoding="utf-8") as f:
-            # cast() ensures strict mypy passing, since json.load returns 'Any'
-            vocab: dict[str, int] = cast("dict[str, int]", json.load(f))
+            raw_data = json.load(f)
+
+            # Check if it's a nested HuggingFace tokenizer.json format
+            if "model" in raw_data and "vocab" in raw_data["model"]:
+                vocab = cast("dict[str, int]", raw_data["model"]["vocab"])
+            else:
+                # Fallback assuming it's already a flat dictionary
+                vocab = cast("dict[str, int]", raw_data)
+
     except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
         msg = f"Error loading vocabulary from {path}: {e}"
         raise RuntimeError(msg) from e

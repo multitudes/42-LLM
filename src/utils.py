@@ -4,6 +4,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from .schemas import (
     FunctionDefinition,
     SelectedFunction,
@@ -225,24 +227,26 @@ def extract_json_from_response(
     try:
         data = json.loads(json_str)
 
-        # Ensure the parsed output is actually a dictionary
-        if not isinstance(data, dict):
-            print("Parsed JSON is not a dictionary.")
-            return SelectedFunction(prompt=prompt, fn_name="", args={})
+        # 1. Use Pydantic to validate the dict structure automatically
+        # Inject the original prompt into data before validation
+        data["prompt"] = prompt
+        parsed_fn = SelectedFunction.model_validate(data)
 
-        fn_name = str(data.get("fn_name", ""))
+        # 2. Extract fn_name and args from the validated Pydantic model
+        fn_name = parsed_fn.fn_name
+        args = parsed_fn.args if isinstance(parsed_fn.args, dict) else {}
 
-        args = data.get("args", {})
-        if not isinstance(args, dict):
-            args = {}
         functions_def = get_functions()
-        # Convert to dicts for enforce_arg_types
-        functions_def_dicts = [fn.dict() for fn in functions_def]
+        # 3. Use model_dump() (Pydantic v2 standard) instead of .dict()
+        functions_def_dicts = [fn.model_dump() for fn in functions_def]
+
         args = enforce_arg_types(fn_name, args, functions_def_dicts)
-        print(f"\ncheck args {args}")
+        # print(f"\ncheck args {args}")
+
         return SelectedFunction(prompt=prompt, fn_name=fn_name, args=args)
-    # Catches only JSON decoding and schema structure errors (Fixes BLE001)
-    except (json.JSONDecodeError, TypeError, ValueError, AttributeError)as e:
+
+    # Catches JSON decoding, schema validation (pydantic), and structure errors
+    except (json.JSONDecodeError, ValidationError, TypeError, ValueError, AttributeError) as e:
         print(f"Error parsing JSON from response: {e}")
         return SelectedFunction(prompt=prompt, fn_name="", args={})
 
@@ -260,5 +264,6 @@ def write_output_to_file(output_to_write_to_file: list[Any]) -> None:
     # Ensure parent directory exists (replaces os.makedirs)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
-        json.dump([o.dict() for o in output_to_write_to_file], f, indent=2)
+        json.dump([o.model_dump()
+                  for o in output_to_write_to_file], f, indent=2)
     print(f"Output corrected and written to {OUTPUT_FILE}")

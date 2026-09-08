@@ -1,3 +1,5 @@
+.PHONY: install run debug clean lint lint-strict
+
 install:
 	@command -v uv >/dev/null 2>&1 || { \
 		echo "uv not found. Installing..."; \
@@ -10,25 +12,26 @@ install:
 	else \
 		echo "uv project already initialized"; \
 	fi
+	uv sync
 
 run:
-	@uv run python -m src
+	uv run python -m src
 
 debug:
-	@uv run python -m pdb -m src
+	uv run python -m pdb -m src
 
 clean:
-	@echo "Removing .venv"
-	@rm -rf .venv
-	@echo "Removing __pycache__"
-	@rm -rf src/__pycache__
-	@rm -rf llm_sdk/__pycache__
+	@echo "Cleaning temporary cache files and virtual environment..."
+	rm -rf .venv
+	rm -rf .mypy_cache
+	rm -rf .pytest_cache
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
 
 lint:
-	uv run flake8 src
-	uv run mypy src/
+	uv run flake8 .
+	uv run mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
-lint-strict: 
-	flake8 . mypy . --strict
-
-PHONY: install run debug clean lint
+lint-strict:
+	uv run flake8 .
+	uv run mypy . --strict

@@ -17,7 +17,7 @@ from .utils import (
     write_output_to_file,
 )
 
-INPUT_FILE = "exercise_input/function_calling_tests.json"
+INPUT_FILE = "input/function_calling_tests.json"
 
 
 def main(input_file: str = INPUT_FILE) -> None:

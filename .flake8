@@ -1,0 +1,14 @@
+[flake8]
+# Exclude virtual environment, git, and cache directories from linting
+exclude =
+    .venv,
+    .git,
+    __pycache__,
+    .mypy_cache,
+    .pytest_cache,
+    build,
+    dist,
+    llm_sdk
+
+# Enforce 80 character line length limit per 42 standards
+max-line-length = 80
