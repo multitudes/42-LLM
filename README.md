@@ -1,5 +1,14 @@
 # 42-LLM-test
+
 A project for 42-Global with python and alms
+
+You are running the LLM locally on your machine, but it executes **directly inside your Python process** using PyTorch and the project's local runtime libraries.
+
+This setup eliminates the need for external tools:
+
+* **No Background Daemons:** Unlike Ollama or standalone C++ inference servers (like `llama.cpp`), you do not need a separate service running in another terminal window.
+* **Embedded Execution:** PyTorch loads the model weights and computes logits natively within your script's memory space.
+* **Zero Network Overhead:** Everything stays offline and self-contained within your local environment without making any external API calls or depending on cloud services.
 
 ## Common Instructions
 
@@ -18,6 +27,7 @@ leaks.
 Include a Makefile in your project to automate common tasks. It must contain the following
 
 rules:
+
 - install: Install project dependencies using pip, uv, pipx, or any other package manager
 of your choice.
 - run: Execute the main script of your project.
