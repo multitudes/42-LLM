@@ -1,16 +1,7 @@
 # the merge.txt file
 
-## asking chatgippidy
+The merges.txt file is the instruction manual that tells the tokenizer how to break down unknown words into smaller, known sub-words using the Byte-Pair Encoding (BPE) algorithm.
 
-Q. You do need merges.txt to correctly transform a strings in the right output tokens?
-
-In the context of your project, the statement "You do need merges.txt to correctly transform strings into the right output tokens" is highlighting a critical missing piece in your custom tokenizer.
-
-Right now, your tokenizer is like a simple dictionary. It can only look up complete words that exist in your vocabulary file. If it sees a word that isn't in the dictionary (like a new word, a plural, or a typo), it has no choice but to mark it as "unknown."
-
-The merges.txt file solves this problem. It's the instruction manual that tells the tokenizer how to break down unknown words into smaller, known sub-words using the Byte-Pair Encoding (BPE) algorithm.
-
-## The Dictionary vs. The Rulebook 📖
 Think of it this way:
 vocab.json (Your vocabulary file): This is a dictionary. It lists all the final, valid "words" (or tokens) the model understands.
 merges.txt (The missing file): This is the phonics rulebook. It contains an ordered list of rules that teach the tokenizer how to sound out and construct words it has never seen before by merging individual characters together.

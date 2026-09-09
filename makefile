@@ -28,6 +28,11 @@ clean:
 	rm -rf .venv
 	rm -rf .mypy_cache
 	rm -rf .pytest_cache
+	rm -rf .ruff_cache
+	rm -rf .venv
+	rm -rf output
+	rm -rf src/__pycache__
+	rm -rf tests/__pycache__
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 
