@@ -1,7 +1,4 @@
-from pathlib import Path
-import pytest
 from src.bpe_tokenizer import (
-    SPECIAL_TOKENS,
     bpe_tokenize,
     custom_decode,
     create_prompt,
@@ -39,7 +36,10 @@ def test_bpe_tokenize_with_special_tokens() -> None:
 
 
 def test_custom_decode() -> None:
-    """Verify decoding filters special tokens and restores whitespace formatting."""
+    """
+    Verify decoding filters special tokens and restores whitespace
+    formatting.
+    """
     # Setup dummy vocabulary inverse lookup (id_to_token)
     id_to_token = {
         151644: "<|im_start|>",

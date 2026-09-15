@@ -1,10 +1,11 @@
 import pytest
+
 from pydantic import ValidationError
+from typing import Any, cast
 from src.schemas import (
     FunctionDefinition,
     SelectedFunction,
     ToolParameter,
-    ToolFunction,
     Tool,
 )
 
@@ -36,7 +37,10 @@ def test_function_definition_invalid() -> None:
 
 
 def test_selected_function_valid() -> None:
-    """Verify SelectedFunction works with valid arguments and optional fn_name."""
+    """
+    Verify SelectedFunction works with valid arguments and optional
+    fn_name.
+    """
     model = SelectedFunction(
         prompt="Add 2 and 3",
         fn_name="fn_add_numbers",
@@ -65,7 +69,10 @@ def test_tool_parameter_defaults() -> None:
 
 
 def test_tool_structure_valid() -> None:
-    """Verify nested Tool, ToolFunction, and ToolParameter schemas parse together."""
+    """
+    Verify nested Tool, ToolFunction, and ToolParameter schemas parse
+    together.
+    """
     tool_data = {
         "type": "function",
         "function": {
@@ -91,7 +98,14 @@ def test_tool_structure_valid() -> None:
 
 
 def test_tool_parameter_validation_error() -> None:
-    """Verify malformed properties or types trigger Pydantic ValidationErrors."""
+    """
+    Verify malformed properties or types trigger Pydantic
+    ValidationErrors.
+    """
     with pytest.raises(ValidationError):
         # properties should be a dict, not a list
-        ToolParameter(properties=["invalid_property_list"])
+        ToolParameter(
+            properties=cast(
+                dict[str, dict[str, str]], ["invalid_property_list"]
+            )
+        )

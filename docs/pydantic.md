@@ -39,8 +39,8 @@ class Message(BaseModel):
 
 class FunctionParameter(BaseModel):
     type: str
-    properties: Dict[str, Any]
-    required: List[str]
+    properties: dict[str, Any]
+    required: list[str]
 
 class Function(BaseModel):
     name: str

@@ -227,13 +227,15 @@ def extract_json_from_response(
     try:
         data = json.loads(json_str)
 
-        # 1. Use Pydantic to validate the dict structure automatically
+        # Use Pydantic to validate the dict structure automatically
         # Inject the original prompt into data before validation
         data["prompt"] = prompt
         parsed_fn = SelectedFunction.model_validate(data)
 
-        # 2. Extract fn_name and args from the validated Pydantic model
+        # Extract fn_name and args from the validated Pydantic model
         fn_name = parsed_fn.fn_name
+        if not fn_name:
+            return SelectedFunction(prompt=prompt, fn_name="", args={})
         args = parsed_fn.args if isinstance(parsed_fn.args, dict) else {}
 
         functions_def = get_functions()
@@ -246,7 +248,8 @@ def extract_json_from_response(
         return SelectedFunction(prompt=prompt, fn_name=fn_name, args=args)
 
     # Catches JSON decoding, schema validation (pydantic), and structure errors
-    except (json.JSONDecodeError, ValidationError, TypeError, ValueError, AttributeError) as e:
+    except (json.JSONDecodeError, ValidationError, TypeError, ValueError,
+            AttributeError) as e:
         print(f"Error parsing JSON from response: {e}")
         return SelectedFunction(prompt=prompt, fn_name="", args={})
 

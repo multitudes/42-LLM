@@ -25,8 +25,8 @@ class FunctionDefinition(BaseModel):
 
     Attributes:
         fn_name (str): Name of the function.
-        args_names (List[str]): Ordered list of argument names.
-        args_types (Dict[str, str]): Mapping of argument names to their types.
+        args_names (list[str]): Ordered list of argument names.
+        args_types (dict[str, str]): Mapping of argument names to their types.
         return_type (str): The return type of the function.
 
     """
@@ -47,7 +47,7 @@ class SelectedFunction(BaseModel):
     Attributes:
         prompt (str): The original natural-language request.
         fn_name (str | None): The name of the function to call.
-        args (Dict[str, Any]): All required arguments with the correct types.
+        args (dict[str, Any]): All required arguments with the correct types.
 
     """
 
@@ -74,8 +74,8 @@ class ToolParameter(BaseModel):
 
     Attributes:
         type (str): The type of the parameters object (default: "object").
-        properties (Dict[str, Dict[str, str]]): Properties of the parameters.
-        required (List[str]): List of required parameter names.
+        properties (dict[str, dict[str, str]]): Properties of the parameters.
+        required (list[str]): List of required parameter names.
 
     """
 

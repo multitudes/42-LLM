@@ -1,10 +1,11 @@
+# Ruff warning: import statements are not sorted alphabetically
+
 This error (`Ruff(I001)`) means your import statements are not sorted alphabetically according to standard Python style rules (isort).
 
 In your screenshot, `import re` comes before `import os`, but `os` comes before `re` alphabetically.
 
----
 
-### Option 1: Fix it manually in your file
+## Option 1: Fix it manually in your file
 
 Rearrange your imports alphabetically (`json` $\rightarrow$ `os` $\rightarrow$ `re`):
 
@@ -34,6 +35,7 @@ uv run ruff check --fix .
 1. Click on the line with the **lightbulb icon** (💡) shown in your screenshot (or press `Cmd + .` on Mac / `Ctrl + .` on Windows/Linux while your cursor is on the import).
 2. Select **"Organize Imports"** or **"Fix with Ruff"**.
 
+## List or list in the imports
 
 `ruff` is completely right. Starting in **Python 3.9** (and since your project targets Python 3.10+), Python introduced native generics (PEP 585). This means you no longer need to import capitalized types like `Dict` or `List` from `typing`—you can use standard lower-case `dict` and `list` directly.
 
@@ -99,18 +101,16 @@ def enforce_arg_types(
 | `Set[int]` | `set[int]` |
 | `Optional[str]` | `str | None` *(Python 3.10+)* |
 
-
 Here is how to update your `enforce_arg_types` function to include complete type hints, a clean Google-style PEP 257 docstring, and mypy-safe dictionary access:
 
 ```python
-from typing import Any, Dict, List
+from typing import Any
 
 
-def enforce_arg_types(
-    fn_name: str,
-    args: Dict[str, Any],
-    functions_def: List[Dict[str, Any]],
-) -> Dict[str, Any]:
+def enforce_arg_types(fn_name: str,
+                      args: dict[str, Any],
+                      functions_def: list[dict[str, Any]],
+                      ) -> dict[str, Any]:
     """Converts argument values to their defined types based on function definitions.
 
     Sometimes the LLM returns a float as 1 instead of 1.0. Given a function
@@ -156,12 +156,12 @@ def enforce_arg_types(
 
 ### Key changes made for `mypy` & PEP 257
 
-1. **Imports:** Imported `Any`, `Dict`, and `List` from `typing`.
+1. **Imports:** Imported `Any` from `typing`.
 2. **Type Signatures:**
 * `fn_name: str`
-* `args: Dict[str, Any]`
-* `functions_def: List[Dict[str, Any]]`
-* `-> Dict[str, Any]`
+* `args: dict[str, Any]`
+* `functions_def: list[dict[str, Any]]`
+* `-> dict[str, Any]`
 
 
 3. **Mypy Guard Checks:**
@@ -186,26 +186,7 @@ uv run mypy .
 
 ```
 
-**How to verify:** `mypy` will output `Success: no issues found` with zero errors.
-
-This requirement means every function you write must explicitly state what types of data it accepts and returns, and include a structured description of what it does.
-
-Here is a breakdown of how to write your code to meet both rules and pass `mypy`.
-
----
-
-### 1. Type Hints (Using `typing`)
-
-Type hints tell Python and `mypy` what kinds of data are allowed:
-
-* **Parameters:** `param_name: type`
-* **Return type:** `def func(...) -> return_type:`
-* **Variables (when ambiguous):** `x: int = 5`
-* **Complex types (from `typing`):** `List[str]`, `Dict[str, int]`, `Optional[int]` (meaning `int` or `None`), `Union[int, float]`
-
----
-
-### 2. PEP 257 Docstrings (Google Style)
+### PEP 257 Docstrings (Google Style)
 
 Google Style is the cleanest, most widely used PEP 257-compliant docstring format. It requires:
 
@@ -221,9 +202,6 @@ Google Style is the cleanest, most widely used PEP 257-compliant docstring forma
 Here is how a function and class look when meeting all of these requirements:
 
 ```python
-from typing import Dict, List, Optional
-
-
 class OrderProcessor:
     """Processes customer orders and calculates totals.
 
@@ -275,13 +253,9 @@ class OrderProcessor:
 2. **Handle `None` explicitly:** If a parameter is `Optional[float]`, `mypy` will force you to check `if discount is not None:` before using it in calculations.
 3. **Annotate empty collections:** If you create an empty list or dict, type it explicitly:
 ```python
-results: List[str] = []
+results: list[str] = []
 
 ```
-
-
-
----
 
 ### How to Verify
 
@@ -291,8 +265,6 @@ Run `mypy` on your files through `uv`:
 uv run mypy .
 
 ```
-
-**How to verify:** `mypy` should return `Success: no issues found in X source files`. If any type is missing or incorrect, `mypy` will output the exact file and line number to fix.
 
 **Yes, absolutely.** Moving those flags into `pyproject.toml` is standard best practice.
 

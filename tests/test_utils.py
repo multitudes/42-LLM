@@ -1,24 +1,29 @@
-from pathlib import Path
 import pytest
-from pydantic import ValidationError
+
+from pathlib import Path
+
 from src.schemas import FunctionDefinition, SelectedFunction
 from src.utils import (
     enforce_arg_types,
     extract_json_from_response,
     get_functions,
     get_input_prompts,
-    get_tool_list,
     write_output_to_file,
 )
 
 
-def test_get_functions_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify get_functions successfully parses a valid tools definition file."""
+def test_get_functions_success(tmp_path: Path,
+                               monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Verify get_functions successfully parses a valid tools definition file.
+    """
     d = tmp_path / "exercise_input"
     d.mkdir()
     f = d / "functions_definition.json"
     f.write_text(
-        '[{"fn_name": "fn_add", "args_names": ["a"], "args_types": {"a": "float"}, "return_type": "float"}]',
+        '[{"fn_name": "fn_add", "args_names": ["a"],'
+        '"args_types": {"a": "float"},'
+        '"return_type": "float"}]',
         encoding="utf-8",
     )
     monkeypatch.setattr("src.utils.TOOLS_DEFINITION_FILE", f)
@@ -69,8 +74,13 @@ def test_enforce_arg_types() -> None:
     assert cleaned["name"] == "123"
 
 
-def test_extract_json_from_response_with_think(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify JSON extraction successfully strips think blocks and parses valid response."""
+def test_extract_json_from_response_with_think(
+        monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    Verify JSON extraction successfully strips think blocks and parses valid
+    response.
+    """
     monkeypatch.setattr(
         "src.utils.get_functions",
         lambda: [
@@ -96,7 +106,9 @@ def test_extract_json_from_response_with_think(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_extract_json_from_response_invalid() -> None:
-    """Verify extraction falls back to empty SelectedFunction on malformed text."""
+    """
+    Verify extraction falls back to empty SelectedFunction on malformed text.
+    """
     prompt = "Hello"
     response = "I cannot fulfill this request."
     result = extract_json_from_response(prompt, response)
@@ -104,7 +116,9 @@ def test_extract_json_from_response_invalid() -> None:
     assert result.args == {}
 
 
-def test_write_output_to_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_write_output_to_file(tmp_path: Path,
+                              monkeypatch: pytest.MonkeyPatch
+                              ) -> None:
     """Verify write_output_to_file successfully serializes models to JSON."""
     out_file = tmp_path / "output" / "results.json"
     monkeypatch.setattr("src.utils.OUTPUT_FILE", out_file)

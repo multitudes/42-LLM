@@ -1,25 +1,13 @@
-A comprehensive overview of Byte Pair Encoding (BPE) tokenization, designed to document your custom implementation in your repository's `README.md`.
-
----
-
 # Byte Pair Encoding (BPE) Tokenizer
 
 This repository features a custom **Byte Pair Encoding (BPE) Tokenizer** built from scratch in Python to handle model vocabulary formatting, tokenization, and decoding without external high-level tokenizer libraries.
 
----
-
-## What is BPE?
-
 Byte Pair Encoding (BPE) is a subword tokenization algorithm that builds a vocabulary dynamically by iteratively merging the most frequently adjacent pairs of characters or character sequences in a corpus.
-
-It balances the compact representations of word-level tokenization with the out-of-vocabulary (OOV) handling of character-level tokenization.
-
----
 
 ## Tokenizer Pipeline & Core Components
 
-```
- Raw Text Input ──> Preprocessing ──> Special Token Split ──> BPE Pair Merging ──> Vocab Mapping (IDs)
+```txt
+Raw Text Input ──> Preprocessing ──> Special Token Split ──> BPE Pair Merging ──> Vocab Mapping (IDs)
 
 ```
 
