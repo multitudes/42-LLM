@@ -27,6 +27,19 @@ uv run python -m src --functions_definition data/input/functions_definition.json
 
 ---
 
+## Prompt Engineering & Regex Fixes
+
+While testing the function-calling pipeline, the local LLM struggled with regular expression generation for character-matching tasks—notably outputting `\w|aeiou` instead of `[aeiou]` when asked to replace vowels, causing it to match all word characters rather than just vowels.
+
+* **Root Cause**: Small fine-tuned models frequently default to broad pattern matchers (`\w`) and confuse them with explicit character sets (`[...]`) when prompted without context.
+* **Prompt Adjustments**:
+* **Explicit Syntax Guidance**: Updated `create_prompt()` to include clear instructions in the system message regarding when to use character sets (`[aeiou]`), digit patterns (`\d+`), and word boundaries (`\b`).
+* **Positive Few-Shot Examples**: Added a dedicated few-shot example (`User: Replace vowels in 'hello'... -> Assistant: {"regex": "[aeiouAEIOU]"...}`) directly to the system prompt.
+
+* **Key Takeaway**: Small local models handle positive structural demonstrations (few-shot prompting) far better than negative constraints (e.g., "do not use `\w`"). Providing concrete input/output pairs in the system context eliminated regex syntax hallucinations across all test cases.
+
+---
+
 ## Documentation Index
 
 For deep dives into specific sub-components of my project, check the dedicated guides in the `docs/` directory:
