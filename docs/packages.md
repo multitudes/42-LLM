@@ -1,53 +1,35 @@
-## Python packages
+# Python Package Structure & Import Resolution
 
-Just as a recap for me... since we use uv and the code to run the program is
+I structure my application source code as an explicit Python package inside the `src/` directory so it can be executed directly as a module via `uv run python -m src`.
 
-```
-	@uv run python -m src
-```
-so the src has to have a package structure.
+## Modules vs. Packages
 
+* **Module:** A single Python file containing code (e.g., `src/bpe_tokenizer.py`).
+* **Package:** A directory containing an `__init__.py` file (e.g., `src/` or `llm_sdk/`).
 
-In Python, a **folder containing an `__init__.py` file is a package**.
-
-- A **module** is a single `.py` file (e.g., `ollama.py`).
-- A **package** is a directory with an `__init__.py` file (e.g., llm_sdk).
-
-The `__init__.py` file can be empty or contain code.  
-It tells Python that the folder should be treated as a package, allowing you to import from it:
+By adding `__init__.py` to a directory, I tell Python and static analysis tools to treat that directory as an explicit package. This enables structured imports across the codebase:
 
 ```python
-from llm_sdk import call_ollama_api
-```
-
-You can also have submodules (other `.py` files) inside the package and import them:
-
-```python
+# Absolute import from a package submodule
 from llm_sdk.ollama import call_ollama_api
+
+# Relative import within the local src package
+from .schemas import ToolParameter
+
 ```
 
-**Summary:**  
-- llm_sdk with `__init__.py` = package  
-- `llm_sdk/ollama.py` = module inside the package
+## Resolving Static Analysis (`mypy`) Import Errors
 
-Adding `src/__init__.py` fixed the issue because it transformed `src` from a plain folder into an **explicit Python package**.
+When running static type checks (`uv run mypy .`), `mypy` analyzes how modules resolve relative import statements.
 
-### The Core Problem: How `mypy` Resolves Relative Imports
+### The Problem
 
-When you run `mypy .` from your project root:
+Inside `src/utils.py`, relative imports use dot notation (e.g., `from .schemas import ...`) where `.` represents the current package. Without `src/__init__.py`, Python and `mypy` treated `src/` as a plain folder rather than a package. As a result, `mypy` failed to establish a parent package anchor for `utils.py`, looking for `schemas.py` in the root directory and raising an `[import-not-found]` error.
 
-1. `mypy` discovers `src/utils.py` and inspects its imports.
-2. Inside `utils.py`, it sees a relative import: `from .schemas import ...`.
-3. In Python, the dot (`.`) in `from . module` means **"the current package"**.
+### The Fix
 
-Without an `__init__.py` file inside `src`, Python and `mypy` treated `src` as a plain folder rather than a package. As a result, when `mypy` tried to resolve `from .schemas`, it had no parent package context to anchor to—it looked at the top-level root directory for `schemas.py`, failed to find it, and raised `[import-not-found]`.
+Placing `__init__.py` inside `src/` resolved this issue by:
 
----
-
-### What `__init__.py` Changed
-
-By placing an `__init__.py` inside `src/`:
-
-1. **Defines a Package:** You explicitly declared to Python and static analysis tools that `src` is a top-level package.
-2. **Establishes Hierarchy:** Now, `src/utils.py` is formally recognized as `src.utils`.
-3. **Resolves Relative Imports:** When `utils.py` says `from .schemas import ...`, `mypy` understands that `.` refers to the `src` package, allowing it to correctly resolve `src/schemas.py`.
+1. **Defining the Package Anchor:** Explicitly declaring `src/` as a top-level package to the Python runtime and `mypy`.
+2. **Establishing Namespace Hierarchy:** Formally registering `src/utils.py` as `src.utils` and `src/schemas.py` as `src.schemas`.
+3. **Validating Relative Imports:** Allowing `mypy` to resolve `from .schemas` relative to the established `src` package context without error.

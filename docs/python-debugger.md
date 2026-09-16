@@ -1,54 +1,45 @@
-# Python Debugger (pdb) Basics
+# Interactive Debugging with `pdb`
 
-The Python Debugger (`pdb`) is a built-in tool for interactive debugging of Python programs. It allows you to pause execution, inspect variables, step through code, and set breakpoints.
+I use Python's built-in interactive debugger (`pdb`) to step through execution, inspect runtime state, and troubleshoot complex tokenizer operations or JSON tool-calling logic.
 
-## How to Start pdb
+## Launching the Debugger
 
-### From the Command Line
-Run your script with pdb:
+I launch the debugger via `uv` to ensure execution runs within the project's virtual environment:
 
 ```zsh
-python -m pdb src/main.py
-```
-Or, if using `uv`:
-```zsh
+# Run the main entry point under pdb
+uv run python -m pdb -m src
+
+# Run a specific script under pdb
 uv run python -m pdb src/main.py
+
 ```
 
-## Common pdb Commands
+## Essential Command Workflow
 
-- `l` (list): Show source code around the current line.
-- `n` (next): Execute the next line of code.
-- `s` (step): Step into a function call.
-- `c` (continue): Continue execution until the next breakpoint.
-- `b <line>`: Set a breakpoint at the specified line number.
-- `b <file>:<line>`: Set a breakpoint in a specific file and line.
-- `p <expression>`: Print the value of an expression.
-- `q` (quit): Exit the debugger.
+When paused inside a debugging session, I rely on the following core commands:
 
-## Example Debugging Session
+* **`b <location>`** — Set a breakpoint by line number or function name (e.g., `b extract_json_from_response` or `b src/bpe_tokenizer.py:42`).
+* **`c`** — **Continue** execution at full speed until the next breakpoint or exception.
+* **`n`** — **Next**: execute the current line and advance to the next line in the current function.
+* **`s`** — **Step**: step inside a function call on the current line.
+* **`p <expr>` / `pp <expr>**` — **Print** or **pretty-print** the runtime value of a variable or data structure.
+* **`l` / `ll**` — **List** source code surrounding the current line or view the full function (`ll`).
+* **`w`** — **Where**: print the current call stack trace.
+* **`q`** — **Quit** and abort execution immediately.
 
-1. Start the debugger:
-   ```zsh
-   python -m pdb src/main.py
-   ```
-2. Use `n` to step through lines, `l` to list code, and `p` to print variable values.
-3. Set breakpoints with `b` and continue with `c`.
+## Inline Breakpoints
 
-## Setting Breakpoints in Code
-You can also set breakpoints directly in your code:
+Instead of running the entire script from line 1 under `pdb`, I insert targeted inline breakpoints directly into my source code during active development:
+
 ```python
-import pdb; pdb.set_trace()
-```
-When execution reaches this line, the debugger will start.
+# Modern Python 3.7+ built-in breakpoint
+breakpoint()
 
-## Tips
-- Use `help` in the debugger for a list of commands.
-- You can inspect and modify variables while paused.
-- Combine with `uv run` for virtual environment support.
+```
+
+When execution hits `breakpoint()`, Python automatically drops into an interactive `pdb` session in the active terminal window.
 
 ## References
-- [Python pdb documentation](https://docs.python.org/3/library/pdb.html)
 
----
-This guide covers the basics of using the Python debugger (`pdb`) for interactive debugging.
+* [Python pdb Documentation](https://docs.python.org/3/library/pdb.html)

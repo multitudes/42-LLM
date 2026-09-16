@@ -1,45 +1,46 @@
-.PHONY: install run debug clean lint lint-strict
+# Variables
+UV := uv
+PYTHON := $(UV) run python
+MYPY := $(UV) run mypy
+FLAKE8 := $(UV) run flake8
+PYTEST := $(UV) run pytest
+
+.PHONY: all install run test debug clean lint lint-strict
+
+all: install lint test
 
 install:
-	@command -v uv >/dev/null 2>&1 || { \
+	@command -v $(UV) >/dev/null 2>&1 || { \
 		echo "uv not found. Installing..."; \
 		curl -LsSf https://astral.sh/uv/install.sh | sh; \
+		export PATH="$$HOME/.local/bin:$$HOME/.cargo/bin:$$PATH"; \
 	}
-	@echo "uv version: $$(uv --version)"
+	@echo "uv version: $$($(UV) --version)"
 	@if [ ! -f pyproject.toml ]; then \
-		uv init; \
-		echo "uv project initialized. Edit pyproject.toml if needed"; \
-	else \
-		echo "uv project already initialized"; \
+		echo "Initializing new uv project..."; \
+		$(UV) init; \
 	fi
-	uv sync
+	$(UV) sync
 
 run:
-	uv run python -m src
+	$(PYTHON) -m src
 
 test:
-	uv run pytest -v
+	$(PYTEST) -v
 
 debug:
-	uv run python -m pdb -m src
+	$(PYTHON) -m pdb src/__main__.py
 
 clean:
 	@echo "Cleaning temporary cache files and virtual environment..."
-	rm -rf .venv
-	rm -rf .mypy_cache
-	rm -rf .pytest_cache
-	rm -rf .ruff_cache
-	rm -rf .venv
-	rm -rf output
-	rm -rf src/__pycache__
-	rm -rf tests/__pycache__
+	rm -rf .venv .mypy_cache .pytest_cache tests/.ruff_cache output build dist *.egg-info
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 
 lint:
-	uv run flake8 .
-	uv run mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
+	$(FLAKE8) .
+	$(MYPY) .
 
 lint-strict:
-	uv run flake8 .
-	uv run mypy . --strict
+	$(FLAKE8) .
+	$(MYPY) . --strict

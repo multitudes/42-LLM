@@ -1,64 +1,69 @@
+# Prototyping with the Ollama REST API
 
-## ollama
+Early in development, I prototyped my prompt templates and tool-calling logic using a local Ollama server running `qwen3:0.6b`. Interacting with Ollama over HTTP allowed me to observe expected output formatting and establish baseline function-calling schemas before implementing the full PyTorch and Hugging Face Transformers pipeline.
 
-At first I did the project with the Ollama api. It is not how it is supposed to be done but it does help to understand how the model should repy, because using the huggingface model with the transformer module is much harder :)
+---
 
-To use the `ollama_chat/qwen3:0.6b` model in your Python code with Ollama, you need to interact with the Ollama server via its REST API. 
+## Server Management & Verification
 
-example with curl from the docs...
-curl http://localhost:11434/api/generate -d '{
-  "model": "qwen3:0.6b",
-  "prompt": "Hello!"
-}'
-The `-d` option in `curl` stands for "data." It sends the specified data in the body of a POST request to the server.
+Before making requests, I verify that the local Ollama daemon is active and listening on port `11434`:
 
-For example:
+```zsh
+# Check if port 11434 is in use by Ollama
+lsof -i :11434
 
-```sh
-curl http://localhost:11434/api/generate -d '{"model": "qwen3:0.6b", "prompt": "Hello!"}'
+# Start the Ollama server if it is not running
+ollama serve
+
+# Pull the lightweight model variant
+ollama pull qwen3:0.6b
+
 ```
 
-This sends the JSON payload to the API endpoint as a POST request.  
-Without `-d`, `curl` sends a GET request by default.
+---
 
+## REST API Prototyping
 
-Here’s a basic example using Python’s `requests` library:
+I tested the generation endpoint using `curl` to send POST requests containing model configuration flags (`-d` / `--data` passes the JSON body):
+
+```sh
+curl http://localhost:11434/api/generate -d '{
+  "model": "qwen3:0.6b",
+  "prompt": "Select the function to compute 2+2.",
+  "stream": false
+}'
+
+```
+
+---
+
+## Python Integration
+
+In my initial prototyping script, I used `requests` to send formatted prompt payloads to the endpoint and inspect the resulting JSON structure:
 
 ```python
 import requests
-import json
 
-OLLAMA_URL_API = "http://localhost:11434/api/generate"
+OLLAMA_API_URL = "http://localhost:11434/api/generate"
 
-data = {
+payload = {
     "model": "qwen3:0.6b",
-    "prompt": "Hello!",
+    "prompt": "Select the appropriate function to compute 2 + 2.",
     "stream": False,
-    "think": False
+    "think": False,
 }
 
-response = requests.post(OLLAMA_URL_API, json=data)
+response = requests.post(OLLAMA_API_URL, json=payload, timeout=30)
+response.raise_for_status()
 
-result = json.loads(response.content.decode())
-
-print(result["response"])
-
+data = response.json()
+print(data.get("response"))
 
 ```
 
-**Steps:**
-1. Make sure Ollama is running locally and the `qwen3:0.6b` model is pulled (`ollama pull qwen3:0.6b`).
-2. Install `requests` if needed: `uv pip install requests`
-3. Use the code above to send a chat message and get a response.
+---
 
-**Note:**  
-- Adjust the endpoint and payload as needed for your use case.
-- For more advanced usage, see the [Ollama API documentation](https://github.com/ollama/ollama/blob/main/docs/api.md).
+## Key Learnings for the Final Pipeline
 
-to check if the port is free
-```
-lsof -i :11434
-```
-If Ollama is not running, you need to start the Ollama server. On macOS, you can usually do this by running:
-`ollama serve`
-
+* **Response Structure:** Prototyping with Ollama helped me design strict regular expressions and Pydantic schemas to strip auxiliary text and extract JSON tool calls cleanly.
+* **Transition to Transformers:** While Ollama abstracts model loading and tokenization behind HTTP handlers, my final production system replaces this setup with direct local tokenization and PyTorch inference using Hugging Face `transformers`.

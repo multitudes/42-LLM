@@ -1,131 +1,105 @@
-# 42-LLM-test
+# 42-LLM: Local Tool-Calling LLM System
 
-A project for 42-Global with python and alms
+I built this project for **42-Global** to run a local Large Language Model (LLM) that autonomously selects and executes Python function tools based on user prompts.
 
-You are running the LLM locally on your machine, but it executes **directly inside your Python process** using PyTorch and the project's local runtime libraries.
+Rather than relying on external API services or standalone inference engines, my setup executes the model **directly inside the Python process** using local runtime libraries.
 
-This setup eliminates the need for external tools:
+* **Embedded Execution:** The model weights and token generation run natively within my script's memory space via `llm_sdk`.
+* **Zero Network Overhead:** Everything operates completely offline without external cloud calls or server dependencies.
+* **No Background Daemons:** Unlike setups requiring Ollama or `llama.cpp` background servers, my application requires no separate process window.
 
-* **No Background Daemons:** Unlike Ollama or standalone C++ inference servers (like `llama.cpp`), you do not need a separate service running in another terminal window.
-* **Embedded Execution:** PyTorch loads the model weights and computes logits natively within your script's memory space.
-* **Zero Network Overhead:** Everything stays offline and self-contained within your local environment without making any external API calls or depending on cloud services.
+---
 
-## Common Instructions
+## Documentation Index
 
-General Rules:
+For deep dives into specific sub-components of my project, check the dedicated guides in the `docs/` directory:
 
-- Your project must be written in Python 3.11 or later.
-- Your project must adhere to the flake8 coding standard. Bonus files are also subject to this standard.
-- Your functions should handle exceptions gracefully to avoid crashes. Use try-except
-blocks to manage potential errors. If your program crashes due to unhandled exceptions
-during the review, it will be considered non-functional.
-- All resources (e.g., file handles, network connections) must be properly managed to prevent
-leaks.
+| Topic / Module | Description & Link |
+| --- | --- |
+| **BPE Tokenization** | Custom Byte Pair Encoding implementation and subword splitting → [`docs/bpe.md`](docs/bpe.md) |
+| **BPE Pair Merges** | Step-by-step token pair rank evaluation and merging → [`docs/merge.md`](docs/merge.md) |
+| **Prompt Engineering** | ChatML control tokens, JSON output formatting, and `/no_think` usage → [`docs/prompting_json.md`](docs/prompting_json.md) |
+| **Prompt Examples** | Concrete tool-calling input/output execution samples → [`docs/example-prompts.md`](docs/example-prompts.md) |
+| **LLM SDK** | Integration guidelines and constraints for the `llm_sdk` runtime → [`docs/llm_sdk.md`](docs/llm_sdk.md) |
+| **Ollama vs Local SDK** | Architectural comparison between standalone daemons and embedded runtime → [`docs/ollama.md`](docs/ollama.md) |
+| **Pydantic Validation** | Data models, type checking, and schema enforcement → [`docs/pydantic.md`](docs/pydantic.md) |
+| **Environment Management** | Virtual environment isolation and synchronization using `uv` → [`docs/uv.md`](docs/uv.md) |
+| **Dependency Management** | Approved Python packages (`numpy`, `pydantic`) and forbidden tools → [`docs/packages.md`](docs/packages.md) |
+| **Generation Logs** | Understanding HuggingFace model startup output and token IDs → [`docs/hugginface.md`](docs/hugginface.md) |
+| **Debugging** | Interactive troubleshooting using `breakpoint()` and Python's `pdb` → [`docs/python-debugger.md`](docs/python-debugger.md) |
+| **Developer Hints** | Useful tips for exception handling, linting, and resource management → [`docs/hints.md`](docs/hints.md) |
 
-## Makefile
+---
 
-Include a Makefile in your project to automate common tasks. It must contain the following
+## System Requirements & Guidelines
 
-rules:
+I designed the codebase to strictly adhere to 42 school specifications:
 
-- install: Install project dependencies using pip, uv, pipx, or any other package manager
-of your choice.
-- run: Execute the main script of your project.
-- debug: Run the main script in debug mode using Python’s built-in debugger.
-- clean: Remove temporary files or caches to keep the project environment clean.
-- lint: Lint your code using flake8 to ensure it meets coding standards.
+* **Python Version:** Python 3.11 or later.
+* **Coding Standards:** PEP 8 compliance checked strictly via `flake8`.
+* **Error Handling:** All routines use `try-except` blocks to manage exceptions gracefully and prevent unexpected crashes.
+* **Resource Safety:** File handles and process memory are properly released to avoid leaks.
+* **Validation:** All data structures and class inputs are validated using [`pydantic`](docs/pydantic.md).
+* **Tool Selection:** Tool calls are decided exclusively through LLM reasoning (no rigid heuristics or manual string matching).
 
-## Additional Guidelines
+### Package & Dependency Constraints
 
-- Create test programs to verify project functionality (not submitted or graded).
-- Submit your work to the assigned Git repository. Only the content in this repository will
-be graded.
+* **Allowed Dependencies:** `numpy`, `pydantic`, and `llm_sdk` (placed at root alongside `src/`).
+* **Forbidden Libraries:** `dspy`, standard `transformers`, `torch` imports, or high-level agent frameworks.
+* **Target Model:** `ollama_chat/qwen3:0.6b` (default engine provided via `llm_sdk`).
 
-If any additional project-specific requirements apply, they will be stated immediately below this
-section.
+---
 
-## Additional instructions
-- All classes must use pydantic for validation.
-- You can use the numpy and json packages.
-- The use of dspy (or any similar package) is completely forbidden, including pytorch, hug-
-gingface package, transformers etc.
-- You can use the following models:
-- ollama_chat/qwen3:0.6b (default)
-- Feel free to use other models (using the names from the huggingface hub) during the beta and let us know!
-- The function to call should be chosen using the LLM, not with heuristics or any other sort of medieval magic.
-- It is forbidden to use any private methods or attributes from the LLM_SDK package.
-- You should create a virtual environment and install the packages numpy, and pydantic using uv. To use llm_sdk you can copy it in the same directory than the one src is in.
-- The evaluators, as well as the moulinette, will just run uv sync.
-- Your program must be run using the following command (where src is the folder containing your files):
-```
-uv run python -m src
-```
-- All errors should be handled gracefully. It must never crash unexpectedly, and must always provide a clear error message to the user.
+## Installation & Execution
 
+I use [`uv`](docs/uv.md) for ultra-fast, deterministic virtual environment setup and dependency synchronization.
 
-## The makefile
-To install uv if not present I follow the official uv docs for Linux and mac:
+### 1. Install `uv` (Linux / macOS)
+
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh;
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
 ```
-Here’s what the curl -LsSf options mean:
 
--L: Follow redirects (if the URL redirects to another location).
--s: Silent mode (don’t show progress or error messages).
--S: Show errors (used with -s to display errors if they occur).
--f: Fail silently on server errors (don’t output HTML error pages; exit with error code).
-Combined, these options make curl quietly download the script, follow redirects, and only show errors if something goes wrong.
+### 2. Install Project Dependencies
 
-## makefile
-In a Makefile, the `@` symbol before a command suppresses the command’s echo (it won’t print the command itself, just the output).
+```bash
+uv sync
 
-- **Use `@` before shell commands:**  
-  Example: `@echo "Hello"`
-
-- **Do NOT use `@` before shell control structures (`fi`, `else`, etc.):**  
-  These are not commands, but part of the shell syntax.  
-  So you write:
-  ```
-  @if ...; then \
-      ... \
-  else \
-      ... \
-  fi
-  ```
-
-**Summary:**  
-- Use `@` before actual commands to suppress their echo.
-- Do not use `@` before shell keywords like `fi`, `else`, `then`.  
-- Only the first line of a multi-line shell block needs the `@` to suppress all output.
-
-## running the code with uv
-The difference is:
-
-- `python src/ollama.py` runs your script using the default Python interpreter in your environment (could be system Python or a virtual environment, depending on what’s activated).
-- `uv run python src/ollama.py` runs your script using the Python interpreter managed by `uv` in your project’s .venv (virtual environment), ensuring all dependencies from your pyproject.toml or `requirements.txt` are available and isolated.
-
-**Summary:**  
-- Use `uv run python ...` for reproducible, isolated environments and dependency management.
-- Use `python ...` for quick runs, but you may risk missing dependencies or using the wrong Python version.
-
-The difference is:
-
-- Using `__main__.py` in a package (like src) allows you to run the package as a module with `python -m src`. Python will look for and execute __main__.py automatically. This is the standard way to provide an entry point for a package.
-
-- Calling `main()` directly (e.g., in `ollama.py` or another script) only works if you run that specific file, like `python src/ollama.py`. It does not work with `python -m src` unless you set up `__main__.py` to call it.
-
-**Summary:**  
-- `__main__.py` enables `python -m src` and is required for package-style execution.
-- Directly calling `main()` is for script-style execution (running a single file).
-
-## llm_sdk
-you should place the llm_sdk package (folder or files) in your project’s root directory—at the same level as your src directory.
-
-
-## debug info message when starting the model
-Q:
-What is this output i get as info when starting
 ```
+
+### 3. Run the Main Application
+
+Per project requirements, the main entry point is executed as a module:
+
+```bash
+uv run python -m src
+
+```
+
+*Note: Running `python -m src` executes `src/__main__.py`, ensuring standard package-level execution rather than running loose scripts.*
+
+---
+
+## Makefile Automation
+
+My `Makefile` provides standardized targets for building, running, and auditing the repository:
+
+| Rule | Command | Purpose |
+| --- | --- | --- |
+| `make install` | `uv sync` | Installs all required dependencies into `.venv` |
+| `make run` | `uv run python -m src` | Runs the main tool-calling LLM application |
+| `make debug` | `uv run python -m pdb -c continue src/__main__.py` | Executes the application in Python's interactive debugger |
+| `make clean` | `rm -rf __pycache__ .venv .pytest_cache` | Cleans temporary cache files and virtual environments |
+| `make lint` | `uv run flake8 src` | Audits source code against PEP 8 coding standards |
+
+---
+
+## Understanding Model Initialization Logs
+
+When initializing the local LLM runtime, the system outputs configuration details similar to this:
+
+```text
 d81485cdf75e47ca/generation_config.json
 Generate config GenerationConfig {
   "bos_token_id": 151643,
@@ -135,20 +109,23 @@ Generate config GenerationConfig {
     151643
   ],
   "pad_token_id": 151643,
+}
+
 ```
-A:
-This output is informational logging from the Hugging Face Transformers library (or a similar LLM SDK) when it loads the model's generation configuration.
 
-Here's what the fields mean:  
+This informational logging originates from the underlying generation configuration loaded by the SDK:
 
-- bos_token_id: The "beginning of sequence" token ID (151643).  
-- eos_token_id: The "end of sequence" token IDs ([151645, 151643]). The model will stop generating when it outputs one of these IDs.  
-- pad_token_id: The "padding" token ID (151643), used to pad sequences to the same length.  
-- do_sample: Whether the model samples tokens (True) or always picks the most likely one (False).  
-This config controls how the model generates text. It's normal to see this printed when initializing or running the model.  
+* `bos_token_id`: **Beginning of Sequence** token ID (`151643`).
+* `eos_token_id`: **End of Sequence** token IDs (`151645`, `151643`). Output generation stops when the model emits one of these IDs.
+* `pad_token_id`: **Padding** token ID (`151643`), used to equalize batch array dimensions.
+* `do_sample`: Set to `True` to enable probabilistic sampling during generation.
 
-## Resources
-https://flake8.pycqa.org/en/latest/index.html  
-https://docs.pydantic.dev/1.10/#__tabbed_1_3  
-https://pypi.org/project/pydantic/  
-https://docs.astral.sh/uv/guides/projects/  
+For further analysis of generation flags, refer to [`docs/hugginface.md`](docs/hugginface.md).
+
+---
+
+## External References
+
+* [Flake8 User Guide](https://flake8.pycqa.org/en/latest/index.html)
+* [Pydantic Documentation](https://docs.pydantic.dev/)
+* [Astral `uv` Project Guide](https://docs.astral.sh/uv/guides/projects/)
