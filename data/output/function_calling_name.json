@@ -71,7 +71,7 @@
     "fn_name": "fn_substitute_string_with_regex",
     "args": {
       "source_string": "Programming is fun",
-      "regex": "\\w|aeiou",
+      "regex": "[aeiouAEIOU]",
       "replacement": "*"
     }
   },

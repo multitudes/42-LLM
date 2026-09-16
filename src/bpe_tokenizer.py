@@ -224,6 +224,8 @@ def create_prompt(user_input: str, tools: str) -> str:
         "You are a helpful assistant that uses tools. "
         "Based on the user's request, you must call the "
         "appropriate tool with the correct arguments. "
+        "When constructing regular expressions, use character sets like [aeiou] "
+        "for matching specific characters, \\d+ for digits, and \\b for word boundaries.\n\n"
         f"You have access to the following tools:\n{tools}\n\n"
         "---\n"
         "Here are some examples:\n\n"
@@ -233,11 +235,15 @@ def create_prompt(user_input: str, tools: str) -> str:
         "User: can you reverse the word 'banana'?\n"
         'Assistant: {"fn_name": "fn_reverse_string", '
         '"args": {"s": "banana"}}\n\n'
-        "User: Substitute the digits in the string\n"
+        "User: Substitute the digits in the string "
         "'Hello 34 I'm 233 years old' with 'NUMBERS'\n"
         'Assistant: {"fn_name": "fn_substitute_string_with_regex", '
         '"args": {"source_string": "Hello 34 I\'m 233 years old", '
-        '"regex": "\\\\d+", "replacement": "NUMBERS"}}\n'
+        '"regex": "\\\\d+", "replacement": "NUMBERS"}}\n\n'
+        "User: Replace vowels in 'hello' with '*'\n"
+        'Assistant: {"fn_name": "fn_substitute_string_with_regex", '
+        '"args": {"source_string": "hello", '
+        '"regex": "[aeiouAEIOU]", "replacement": "*"}}\n'
         "---\n\n"
         "Now, answer the following request. Only provide the JSON for "
         "the tool call."
