@@ -14,16 +14,19 @@ from src.schemas import (
 def test_function_definition_valid() -> None:
     """Verify FunctionDefinition parses correct payloads successfully."""
     data = {
-        "fn_name": "fn_add_numbers",
-        "args_names": ["a", "b"],
-        "args_types": {"a": "float", "b": "float"},
-        "return_type": "float",
+        "name": "fn_add_numbers",
+        "description": "Add two numbers together and return their sum.",
+        "parameters": {
+            "a": {"type": "number"},
+            "b": {"type": "number"},
+        },
+        "returns": {"type": "number"},
     }
     model = FunctionDefinition.model_validate(data)
-    assert model.fn_name == "fn_add_numbers"
-    assert model.args_names == ["a", "b"]
-    assert model.args_types["a"] == "float"
-    assert model.return_type == "float"
+    assert model.name == "fn_add_numbers"
+    assert model.description == "Add two numbers together and return their sum."
+    assert model.parameters["a"].type == "number"
+    assert model.returns.type == "number"
 
 
 def test_function_definition_invalid() -> None:
@@ -31,33 +34,33 @@ def test_function_definition_invalid() -> None:
     with pytest.raises(ValidationError):
         FunctionDefinition.model_validate(
             {
-                "fn_name": "fn_add_numbers",
-                # Missing args_names, args_types, return_type
+                "name": "fn_add_numbers",
+                # Missing description, parameters, returns
             },
         )
 
 
 def test_selected_function_valid() -> None:
     """
-    Verify SelectedFunction works with valid arguments and optional
-    fn_name.
+    Verify SelectedFunction works with valid parameters and optional
+    name.
     """
     model = SelectedFunction(
         prompt="Add 2 and 3",
-        fn_name="fn_add_numbers",
-        args={"a": 2, "b": 3},
+        name="fn_add_numbers",
+        parameters={"a": 2, "b": 3},
     )
     assert model.prompt == "Add 2 and 3"
-    assert model.fn_name == "fn_add_numbers"
-    assert model.args["a"] == 2
+    assert model.name == "fn_add_numbers"
+    assert model.parameters["a"] == 2
 
-    # Test with None fn_name (e.g. failed parse fallback)
+    # Test with None name (e.g. failed parse fallback)
     model_none = SelectedFunction(
         prompt="Hello",
-        fn_name=None,
-        args={},
+        name=None,
+        parameters={},
     )
-    assert model_none.fn_name is None
+    assert model_none.name is None
 
 
 def test_tool_parameter_defaults() -> None:

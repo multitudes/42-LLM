@@ -19,15 +19,15 @@ def test_tokenizer_initialization() -> None:
 def test_extract_json_valid() -> None:
     """Verify JSON extraction handles valid tool calls."""
     prompt = "Multiply 5 and 3"
-    response = ('Here is the call: {"fn_name": "multiply", '
-                '"args": {"a": 5, "b": 3}}'
+    response = ('Here is the call: {"name": "multiply", '
+                '"parameters": {"a": 5, "b": 3}}'
                 )
 
     result = extract_json_from_response(prompt, response)
 
     assert isinstance(result, SelectedFunction)
-    assert result.fn_name == "multiply"
-    assert result.args["a"] == 5
+    assert result.name == "multiply"
+    assert result.parameters["a"] == 5
 
 
 def test_extract_json_missing() -> None:
@@ -37,4 +37,4 @@ def test_extract_json_missing() -> None:
 
     result = extract_json_from_response(prompt, response)
 
-    assert result.fn_name == ""
+    assert result.name == ""

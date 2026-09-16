@@ -1,0 +1,9 @@
+[
+    {
+        "prompt": "Test",
+        "name": "func",
+        "parameters": {
+            "x": 1
+        }
+    }
+]

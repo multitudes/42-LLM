@@ -1,119 +1,209 @@
+Here is the updated `README.md` fully restructured to meet all the newly specified subject requirements while incorporating your existing project details, CLI usage, and prompt engineering lessons.
+
+---
+
+```markdown
+*This project has been created as part of the 42 curriculum by <login1>.*
+
 # 42-LLM: Local Tool-Calling LLM System
 
-I built this project for **42-Global** to run a local Large Language Model (LLM) that autonomously selects and executes Python function tools based on user prompts.
+## Description
 
-Rather than relying on external API services or standalone inference engines, my setup executes the model **directly inside the Python process** using local runtime libraries.
+This project implements an embedded, local Large Language Model (LLM) pipeline designed to autonomously select and format tool/function calls based on natural language user requests. 
 
-* **Embedded Execution:** The model weights and token generation run natively within my script's memory space via `llm_sdk`.
-* **Zero Network Overhead:** Everything operates completely offline without external cloud calls or server dependencies.
-* **No Background Daemons:** Unlike setups requiring Ollama or `llama.cpp` background servers, my application requires no separate process window.
+The core goal is to enable structural tool invocation natively within Python without relying on external cloud APIs or background server daemons like Ollama. Executing directly inside the process memory via `llm_sdk`, the pipeline parses custom function definitions, constructs ChatML prompts, processes subword tokenization, decodes model outputs, and enforces target types using Pydantic schemas.
 
 ---
 
-## CLI Usage
+## Instructions
 
-The pipeline supports dynamic file paths via command-line arguments using standard `--flag` options. If omitted, the application defaults to reading input schemas from `data/input/` and writing results to `data/output/`.
+### System Requirements
+* **Python Version:** 3.11 or later
+* **Package Manager:** [`uv`](https://docs.astral.sh/uv/) for deterministic environment synchronization
+* **Coding Standards:** PEP 8 compliance verified via `flake8`
 
-To execute the project with explicit paths, run:
+### Installation
 
-```bash
-uv run python -m src --functions_definition data/input/functions_definition.json --input data/input/function_calling_tests.json --output data/output/function_calling_name.json
+1. Install `uv` (if not already installed):
+   ```bash
+   curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
 
 ```
 
-* **`--functions_definition`**: Path to the JSON file containing tool definitions and parameter specifications.
-* **`--input`**: Path to the JSON file containing test prompts to be evaluated by the LLM.
-* **`--output`**: Destination path where the resulting function calls and parsed arguments will be serialized.
-
----
-
-## Prompt Engineering & Regex Fixes
-
-While testing the function-calling pipeline, the local LLM struggled with regular expression generation for character-matching tasks—notably outputting `\w|aeiou` instead of `[aeiou]` when asked to replace vowels, causing it to match all word characters rather than just vowels.
-
-* **Root Cause**: Small fine-tuned models frequently default to broad pattern matchers (`\w`) and confuse them with explicit character sets (`[...]`) when prompted without context.
-* **Prompt Adjustments**:
-* **Explicit Syntax Guidance**: Updated `create_prompt()` to include clear instructions in the system message regarding when to use character sets (`[aeiou]`), digit patterns (`\d+`), and word boundaries (`\b`).
-* **Positive Few-Shot Examples**: Added a dedicated few-shot example (`User: Replace vowels in 'hello'... -> Assistant: {"regex": "[aeiouAEIOU]"...}`) directly to the system prompt.
-
-* **Key Takeaway**: Small local models handle positive structural demonstrations (few-shot prompting) far better than negative constraints (e.g., "do not use `\w`"). Providing concrete input/output pairs in the system context eliminated regex syntax hallucinations across all test cases.
-
----
-
-## Documentation Index
-
-For deep dives into specific sub-components of my project, check the dedicated guides in the `docs/` directory:
-
-| Topic / Module | Description & Link |
-| --- | --- |
-| **BPE Tokenization** | Custom Byte Pair Encoding implementation and subword splitting → [`docs/bpe.md`](docs/bpe.md) |
-| **BPE Pair Merges** | Step-by-step token pair rank evaluation and merging → [`docs/merge.md`](docs/merge.md) |
-| **Prompt Engineering** | ChatML control tokens, JSON output formatting, and `/no_think` usage → [`docs/prompting_json.md`](docs/prompting_json.md) |
-| **Prompt Examples** | Concrete tool-calling input/output execution samples → [`docs/example-prompts.md`](docs/example-prompts.md) |
-| **LLM SDK** | Integration guidelines and constraints for the `llm_sdk` runtime → [`docs/llm_sdk.md`](docs/llm_sdk.md) |
-| **Ollama vs Local SDK** | Architectural comparison between standalone daemons and embedded runtime → [`docs/ollama.md`](docs/ollama.md) |
-| **Pydantic Validation** | Data models, type checking, and schema enforcement → [`docs/pydantic.md`](docs/pydantic.md) |
-| **Environment Management** | Virtual environment isolation and synchronization using `uv` → [`docs/uv.md`](docs/uv.md) |
-| **Dependency Management** | Approved Python packages (`numpy`, `pydantic`) and forbidden tools → [`docs/packages.md`](docs/packages.md) |
-| **Generation Logs** | Understanding HuggingFace model startup output and token IDs → [`docs/hugginface.md`](docs/hugginface.md) |
-| **Debugging** | Interactive troubleshooting using `breakpoint()` and Python's `pdb` → [`docs/python-debugger.md`](docs/python-debugger.md) |
-| **Developer Hints** | Useful tips for exception handling, linting, and resource management → [`docs/hints.md`](docs/hints.md) |
-
----
-
-## System Requirements & Guidelines
-
-I designed the codebase to strictly adhere to 42 school specifications:
-
-* **Python Version:** Python 3.11 or later.
-* **Coding Standards:** PEP 8 compliance checked strictly via `flake8`.
-* **Error Handling:** All routines use `try-except` blocks to manage exceptions gracefully and prevent unexpected crashes.
-* **Resource Safety:** File handles and process memory are properly released to avoid leaks.
-* **Validation:** All data structures and class inputs are validated using [`pydantic`](docs/pydantic.md).
-* **Tool Selection:** Tool calls are decided exclusively through LLM reasoning (no rigid heuristics or manual string matching).
-
-### Package & Dependency Constraints
-
-* **Allowed Dependencies:** `numpy`, `pydantic`, and `llm_sdk` (placed at root alongside `src/`).
-* **Forbidden Libraries:** `dspy`, standard `transformers`, `torch` imports, or high-level agent frameworks.
-* **Target Model:** `ollama_chat/qwen3:0.6b` (default engine provided via `llm_sdk`).
-
----
-
-## Installation & Execution
-
-I use [`uv`](docs/uv.md) for ultra-fast, deterministic virtual environment setup and dependency synchronization.
-
-### 1. Install `uv` (Linux / macOS)
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-```
-
-### 2. Install Project Dependencies
-
+2. Synchronize project dependencies:
 ```bash
 uv sync
 
 ```
 
-### 3. Run the Main Application
 
-Per project requirements, the main entry point is executed as a module:
+
+### Execution
+
+Run the application as a module using `uv`:
 
 ```bash
+# Run with default file locations
 uv run python -m src
+
+# Run with custom input, output, and function definition paths
+uv run python -m src --functions_definition data/input/functions_definition.json --input data/input/function_calling_tests.json --output data/output/function_calling_name.json
 
 ```
 
-*Note: Running `python -m src` executes `src/__main__.py`, ensuring standard package-level execution rather than running loose scripts.*
+---
+
+## Example Usage
+
+Given an input functions definition file (`data/input/functions_definition.json`):
+
+```json
+[
+  {
+    "name": "fn_reverse_string",
+    "description": "Reverse a string and return the reversed result.",
+    "parameters": {
+      "s": {
+        "type": "string"
+      }
+    },
+    "returns": {
+      "type": "string"
+    }
+  }
+]
+
+```
+
+And a test prompt JSON file (`data/input/function_calling_tests.json`):
+
+```json
+[
+  {
+    "prompt": "Reverse the string 'hello'"
+  }
+]
+
+```
+
+Executing the command generates the structured function call output (`data/output/function_calling_name.json`):
+
+```json
+[
+  {
+    "prompt": "Reverse the string 'hello'",
+    "name": "fn_reverse_string",
+    "parameters": {
+      "s": "hello"
+    }
+  }
+]
+
+```
+
+---
+
+## Algorithm Explanation
+
+The pipeline uses a structured ChatML template combined with post-generation JSON extraction to achieve reliable tool selection:
+
+1. **Schema Ingestion:** Reads function definitions and formats them into a standardized JSON tool list matching OpenAI-compatible schemas.
+2. **Context Creation:** Wraps user prompts, available tool specifications, and few-shot examples inside `<|im_start|>` and `<|im_end|>` ChatML tags, suppressing internal reasoning using `/no_think`.
+3. **BPE Tokenization:** BPE tokenizes input strings using vocabulary ranks and converts tokens to sequence IDs.
+4. **Inference & Decoding:** Generates answer IDs via `llm_sdk` and decodes them back to raw text.
+5. **Regex JSON Extraction & Type Enforcement:** Extracts the serialized JSON payload via regular expressions, parses it into Pydantic models (`SelectedFunction`), and forcibly casts argument values (e.g., converting integer outputs to floats for `"type": "number"`) via `enforce_arg_types()`.
+
+---
+
+## Design Decisions
+
+* **Embedded Local Execution:** Selected an embedded SDK runtime over background process daemons (e.g., `llama.cpp` or Ollama) to keep execution entirely self-contained within Python process memory.
+* **Pydantic Validation:** Standardized all tool definitions and output objects using Pydantic models (`FunctionDefinition`, `SelectedFunction`, `Tool`) to guarantee runtime type safety.
+* **Pydantic V2 Migration:** Standardized schema conversion routines on `model_dump()` and `model_validate()` rather than deprecated V1 methods (`.dict()`).
+* **Argparse Configuration:** Integrated standard `argparse` flags (`--functions_definition`, `--input`, `--output`) with fallbacks to default data paths for automated evaluators.
+
+---
+
+## Performance Analysis
+
+* **Accuracy:** Reached high precision on structured tool selection by leveraging ChatML delimiters and targeted few-shot examples in system prompts.
+* **Speed:** Offline embedded execution eliminates network latency, enabling token generation to run directly on local GPU/MPS or CPU hardware.
+* **Reliability:** Type enforcement routines guarantee that numeric strings or integer outputs returned by the model conform strictly to target JSON types before output serialization.
+
+---
+
+## Challenges Faced
+
+### 1. Regex Generation Hallucinations
+
+* **Issue:** For vowel substitution prompts, the local model generated faulty regex patterns like `\w|aeiou` instead of `[aeiou]`, resulting in all word characters being replaced.
+* **Solution:** Added explicit positive few-shot examples demonstrating character sets (`[...]`) and word boundary syntax directly inside system prompts. Providing concrete input/output demonstrations proved far more effective than negative constraints (e.g., "do not use `\w`").
+
+### 2. Schema Structure Updates
+
+* **Issue:** Adapting code when tool definitions transitioned from legacy keys (`fn_name`, `args_names`, `args_types`) to OpenAI-standard fields (`name`, `description`, `parameters`, `returns`).
+* **Solution:** Refactored `src/schemas.py` and `src/utils.py` to dynamically construct JSON tool specs from nested dictionary maps (`dict[str, ParameterSchema]`), removing the need for artificial description synthesis.
+
+### 3. Infinite Generation & Memory Edge Cases
+
+* **Issue:** Ambiguous or out-of-domain prompts caused the model to endlessly generate repetitive tokens, leading to Apple Silicon MPS memory allocation exhaustion.
+* **Solution:** Enforced strict token limits (`max_new_tokens`) during sequence generation to cut off generation loops cleanly.
+
+---
+
+## Testing Strategy
+
+* **Schema Validation:** Validated schema parsing against varied function signatures (single-argument, multi-argument, string-based, and numeric functions).
+* **CLI Customization:** Confirmed path overrides across default and custom directory targets using explicit command-line flags.
+* **Edge Case Suite:** Tested model responses against edge cases:
+* Extreme numeric inputs (e.g., large integers, floating points)
+* String operations with escaped quotes and special characters
+* Ambiguous inputs and out-of-domain prompts
+* Incomplete argument lists
+
+
+
+---
+
+## Resources
+
+* [Flake8 User Guide](https://flake8.pycqa.org/en/latest/index.html)
+* [Pydantic Documentation](https://docs.pydantic.dev/)
+* [Astral `uv` Project Guide](https://docs.astral.sh/uv/guides/projects/)
+* [OpenAI Function Calling Guide](https://platform.openai.com/docs/guides/function-calling)
+
+### AI Usage Declaration
+
+AI assistants (Gemini) were used during this project for the following tasks:
+
+* **Pydantic & Runtime Validation:** Assisting in understanding how Pydantic operates at runtime, including data parsing, field validation rules, and migrating models to Pydantic V2 methods (`model_validate` and `model_dump`).
+* **Regex Diagnosis:** Identifying root causes of local LLM regex syntax hallucinations (`\w|aeiou` vs `[aeiou]`) and formulating effective few-shot prompt adjustments.
+* **Boilerplate Generation:** updating README documentation layout. Spell check. Grammar check. Help with documentation.
+
+---
+
+## Documentation Index
+
+For deep dives into specific sub-components of the project, check the dedicated guides in the `docs/` directory:
+
+| Topic / Module | Description & Link |
+| --- | --- |
+| **BPE Tokenization** | Custom Byte Pair Encoding implementation and subword splitting → [`docs/bpe.md`](https://www.google.com/search?q=docs/bpe.md) |
+| **BPE Pair Merges** | Step-by-step token pair rank evaluation and merging → [`docs/merge.md`](https://www.google.com/search?q=docs/merge.md) |
+| **Prompt Engineering** | ChatML control tokens, JSON output formatting, and `/no_think` usage → [`docs/prompting_json.md`](https://www.google.com/search?q=docs/prompting_json.md) |
+| **Prompt Examples** | Concrete tool-calling input/output execution samples → [`docs/example-prompts.md`](https://www.google.com/search?q=docs/example-prompts.md) |
+| **LLM SDK** | Integration guidelines and constraints for the `llm_sdk` runtime → [`docs/llm_sdk.md`](https://www.google.com/search?q=docs/llm_sdk.md) |
+| **Ollama vs Local SDK** | Architectural comparison between standalone daemons and embedded runtime → [`docs/ollama.md`](https://www.google.com/search?q=docs/ollama.md) |
+| **Pydantic Validation** | Data models, type checking, and schema enforcement → [`docs/pydantic.md`](https://www.google.com/search?q=docs/pydantic.md) |
+| **Environment Management** | Virtual environment isolation and synchronization using `uv` → [`docs/uv.md`](https://www.google.com/search?q=docs/uv.md) |
+| **Dependency Management** | Approved Python packages (`numpy`, `pydantic`) and forbidden tools → [`docs/packages.md`](https://www.google.com/search?q=docs/packages.md) |
+| **Generation Logs** | Understanding HuggingFace model startup output and token IDs → [`docs/hugginface.md`](https://www.google.com/search?q=docs/hugginface.md) |
+| **Debugging** | Interactive troubleshooting using `breakpoint()` and Python's `pdb` → [`docs/python-debugger.md`](https://www.google.com/search?q=docs/python-debugger.md) |
+| **Developer Hints** | Useful tips for exception handling, linting, and resource management → [`docs/hints.md`](https://www.google.com/search?q=docs/hints.md) |
 
 ---
 
 ## Makefile Automation
-
-My `Makefile` provides standardized targets for building, running, and auditing the repository:
 
 | Rule | Command | Purpose |
 | --- | --- | --- |
@@ -122,38 +212,3 @@ My `Makefile` provides standardized targets for building, running, and auditing 
 | `make debug` | `uv run python -m pdb -c continue src/__main__.py` | Executes the application in Python's interactive debugger |
 | `make clean` | `rm -rf __pycache__ .venv .pytest_cache` | Cleans temporary cache files and virtual environments |
 | `make lint` | `uv run flake8 src` | Audits source code against PEP 8 coding standards |
-
----
-
-## Understanding Model Initialization Logs
-
-When initializing the local LLM runtime, the system outputs configuration details similar to this:
-
-```text
-d81485cdf75e47ca/generation_config.json
-Generate config GenerationConfig {
-  "bos_token_id": 151643,
-  "do_sample": true,
-  "eos_token_id": [
-    151645,
-    151643
-  ],
-  "pad_token_id": 151643,
-}
-
-```
-
-This informational logging originates from the underlying generation configuration loaded by the SDK:
-
-* `bos_token_id`: **Beginning of Sequence** token ID (`151643`).
-* `eos_token_id`: **End of Sequence** token IDs (`151645`, `151643`). Output generation stops when the model emits one of these IDs.
-* `pad_token_id`: **Padding** token ID (`151643`), used to equalize batch array dimensions.
-* `do_sample`: Set to `True` to enable probabilistic sampling during generation.
-
-For further analysis of generation flags, refer to [`docs/hugginface.md`](docs/hugginface.md).
-
-## External References
-
-* [Flake8 User Guide](https://flake8.pycqa.org/en/latest/index.html)
-* [Pydantic Documentation](https://docs.pydantic.dev/)
-* [Astral `uv` Project Guide](https://docs.astral.sh/uv/guides/projects/)

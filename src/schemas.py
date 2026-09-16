@@ -35,13 +35,10 @@ class FunctionDefinition(BaseModel):
 class SelectedFunction(BaseModel):
     """
     Schema for the function selected by the model to call.
-
-    This is what we expect the model to output after being prompted
-    with a list of available functions and a user prompt.
     """
     prompt: str
-    fn_name: str | None
-    args: dict[str, Any]
+    name: str | None
+    parameters: dict[str, Any]
 
 
 class ToolParameter(BaseModel):

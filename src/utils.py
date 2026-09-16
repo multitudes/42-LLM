@@ -21,10 +21,17 @@ THINK_TAG = "</think>"
 
 
 def get_functions(
-    tools_file: str | Path = TOOLS_DEFINITION_FILE
+    tools_file: str | Path | None = None
 ) -> list[FunctionDefinition]:
     """Loads function definitions from the specified tools definition file."""
+    # Resolve default dynamically so monkeypatch works correctly
+    if tools_file is None:
+        tools_file = globals().get("TOOLS_DEFINITION_FILE", TOOLS_DEFINITION_FILE)
+
     tools_path = Path(tools_file)
+    if not tools_path.exists():
+        raise RuntimeError(f"Tools definition file not found: {tools_path}")
+
     try:
         with tools_path.open("r", encoding="utf-8") as f:
             functions_raw = json.load(f)
@@ -98,34 +105,34 @@ def get_tool_list(tools_file: str | Path = TOOLS_DEFINITION_FILE) -> str:
 
 
 def enforce_arg_types(
-    fn_name: str,
-    args: dict[str, Any],
+    name: str,
+    parameters: dict[str, Any],
     functions_def: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """Converts argument values to their defined types based on function def."""
-    fn_def = next((f for f in functions_def if f.get("name") == fn_name), None)
+    fn_def = next((f for f in functions_def if f.get("name") == name), None)
 
     if not fn_def or "parameters" not in fn_def:
-        return args
+        return parameters
 
-    parameters = fn_def["parameters"]
-    if not isinstance(parameters, dict):
-        return args
+    params_def = fn_def["parameters"]
+    if not isinstance(params_def, dict):
+        return parameters
 
-    for arg_name, param_details in parameters.items():
-        if arg_name in args:
+    for arg_name, param_details in params_def.items():
+        if arg_name in parameters:
             arg_type = param_details.get("type")
             try:
                 if arg_type == "number":
-                    args[arg_name] = float(args[arg_name])
+                    parameters[arg_name] = float(parameters[arg_name])
                 elif arg_type == "integer":
-                    args[arg_name] = int(args[arg_name])
+                    parameters[arg_name] = int(parameters[arg_name])
                 elif arg_type == "string":
-                    args[arg_name] = str(args[arg_name])
+                    parameters[arg_name] = str(parameters[arg_name])
             except (ValueError, TypeError):
                 pass
 
-    return args
+    return parameters
 
 
 def extract_json_from_response(
@@ -137,11 +144,11 @@ def extract_json_from_response(
     if THINK_TAG in response:
         response = response.split(THINK_TAG, 1)[1].strip()
 
-    pattern = r'\{\s*"fn_name":.*?\}\s*\}'
+    pattern = r'\{.*\}'
     match = re.search(pattern, response, re.DOTALL)
     if not match:
         print("No JSON object found in the response.")
-        return SelectedFunction(prompt=prompt, fn_name="", args={})
+        return SelectedFunction(prompt=prompt, name="", parameters={})
 
     json_str = match.group(0)
 
@@ -150,36 +157,46 @@ def extract_json_from_response(
         data["prompt"] = prompt
         parsed_fn = SelectedFunction.model_validate(data)
 
-        fn_name = parsed_fn.fn_name
-        if not fn_name:
-            return SelectedFunction(prompt=prompt, fn_name="", args={})
-        args = parsed_fn.args if isinstance(parsed_fn.args, dict) else {}
+        name = parsed_fn.name
+        if not name:
+            return SelectedFunction(prompt=prompt, name="", parameters={})
+        parameters = (
+            parsed_fn.parameters if isinstance(
+                parsed_fn.parameters, dict) else {}
+        )
 
         functions_def = get_functions(tools_file=tools_file)
         functions_def_dicts = [fn.model_dump() for fn in functions_def]
 
-        args = enforce_arg_types(fn_name, args, functions_def_dicts)
+        parameters = enforce_arg_types(name, parameters, functions_def_dicts)
 
-        return SelectedFunction(prompt=prompt, fn_name=fn_name, args=args)
+        return SelectedFunction(prompt=prompt, name=name, parameters=parameters)
 
-    except (json.JSONDecodeError,
-            ValidationError,
-            TypeError,
-            ValueError,
-            AttributeError,
-            ) as e:
-        print(f"Error parsing JSON from response: {e}")
-        return SelectedFunction(prompt=prompt, fn_name="", args={})
+    except (
+        json.JSONDecodeError,
+        ValidationError,
+        TypeError,
+        ValueError,
+        AttributeError,
+    ) as e:
+        # TEMP DEBUG: Print and re-raise so pytest shows the real traceback
+        print(f"CRITICAL PARSE ERROR: {e} | JSON_STR was: {json_str}")
+        raise
+        # return SelectedFunction(prompt=prompt, name="", parameters={})
 
 
 def write_output_to_file(
-    output_to_write_to_file: list[Any],
+    results: list[SelectedFunction],
     output_file: str | Path = OUTPUT_FILE,
 ) -> None:
-    """Writes the processed output list to a JSON file."""
-    output_path = Path(output_file)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("w", encoding="utf-8") as f:
-        json.dump([o.model_dump()
-                  for o in output_to_write_to_file], f, indent=2)
-    print(f"Output corrected and written to {output_path}")
+    """Serializes the list of SelectedFunction models to a JSON file."""
+    path = Path(output_file)
+    # Ensure parent directories exist before writing
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        data = [item.model_dump() for item in results]
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
+    except Exception as e:
+        print(f"Error writing output to file: {e}")

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from src.schemas import FunctionDefinition, SelectedFunction
+from src.schemas import FunctionDefinition, SelectedFunction, ParameterSchema, ReturnSchema
 from src.utils import (
     enforce_arg_types,
     extract_json_from_response,
@@ -21,16 +21,16 @@ def test_get_functions_success(tmp_path: Path,
     d.mkdir()
     f = d / "functions_definition.json"
     f.write_text(
-        '[{"fn_name": "fn_add", "args_names": ["a"],'
-        '"args_types": {"a": "float"},'
-        '"return_type": "float"}]',
+        '[{"name": "fn_add", "description": "Add numbers",'
+        '"parameters": {"a": {"type": "number"}},'
+        '"returns": {"type": "number"}}]',
         encoding="utf-8",
     )
     monkeypatch.setattr("src.utils.TOOLS_DEFINITION_FILE", f)
 
     funcs = get_functions()
     assert len(funcs) == 1
-    assert funcs[0].fn_name == "fn_add"
+    assert funcs[0].name == "fn_add"
 
 
 def test_get_functions_file_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -58,18 +58,22 @@ def test_enforce_arg_types() -> None:
     """
     functions_def = [
         {
-            "fn_name": "fn_multiply",
-            "args_names": ["a", "b", "name"],
-            "args_types": {"a": "float", "b": "int", "name": "str"},
-            "return_type": "float",
+            "name": "fn_multiply",
+            "description": "Multiply numbers",
+            "parameters": {
+                "a": {"type": "number"},
+                "b": {"type": "integer"},
+                "name": {"type": "string"},
+            },
+            "returns": {"type": "number"},
         },
     ]
-    raw_args = {"a": "10", "b": "5", "name": 123}
-    cleaned = enforce_arg_types("fn_multiply", raw_args, functions_def)
+    raw_parameters = {"a": "10", "b": "5", "name": 123}
+    cleaned = enforce_arg_types("fn_multiply", raw_parameters, functions_def)
 
     assert cleaned["a"] == 10.0
     assert isinstance(cleaned["a"], float)
-    assert cleaned["b"] == 5.0
+    assert cleaned["b"] == 5
     assert isinstance(cleaned["b"], int)
     assert cleaned["name"] == "123"
 
@@ -83,26 +87,26 @@ def test_extract_json_from_response_with_think(
     """
     monkeypatch.setattr(
         "src.utils.get_functions",
-        lambda: [
-            FunctionDefinition(
-                fn_name="multiply",
-                args_names=["a", "b"],
-                args_types={"a": "float", "b": "float"},
-                return_type="float",
-            ),
+        lambda *args, **kwargs: [
+            FunctionDefinition.model_validate({
+                "name": "multiply",
+                "description": "Multiply numbers",
+                "parameters": {"a": {"type": "number"}, "b": {"type": "number"}},
+                "returns": {"type": "number"},
+            })
         ],
     )
 
     prompt = "Multiply numbers"
     response = (
         '</think>\n'
-        'Here is your answer: {"fn_name": "multiply", "args": {"a": 2, "b": 4}}'
+        'Here is your answer: {"name": "multiply", "parameters": {"a": 2, "b": 4}}'
     )
 
     result = extract_json_from_response(prompt, response)
     assert isinstance(result, SelectedFunction)
-    assert result.fn_name == "multiply"
-    assert result.args["a"] == 2.0
+    assert result.name == "multiply"
+    assert result.parameters["a"] == 2.0
 
 
 def test_extract_json_from_response_invalid() -> None:
@@ -112,8 +116,8 @@ def test_extract_json_from_response_invalid() -> None:
     prompt = "Hello"
     response = "I cannot fulfill this request."
     result = extract_json_from_response(prompt, response)
-    assert result.fn_name == ""
-    assert result.args == {}
+    assert result.name == ""
+    assert result.parameters == {}
 
 
 def test_write_output_to_file(tmp_path: Path,
@@ -123,8 +127,8 @@ def test_write_output_to_file(tmp_path: Path,
     out_file = tmp_path / "output" / "results.json"
     monkeypatch.setattr("src.utils.OUTPUT_FILE", out_file)
 
-    model = SelectedFunction(prompt="Test", fn_name="func", args={"x": 1})
-    write_output_to_file([model])
+    model = SelectedFunction(prompt="Test", name="func", parameters={"x": 1})
+    write_output_to_file([model], output_file=out_file)
 
     assert out_file.exists()
     content = out_file.read_text(encoding="utf-8")

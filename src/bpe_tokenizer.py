@@ -5,7 +5,7 @@ from itertools import pairwise
 from pathlib import Path
 from typing import Any, cast
 
-MAX_TOKENS = 150
+MAX_TOKENS = 92
 # SPECIAL_TOKENS = ["<|im_start|>", "<|im_end|>", "<think>", "</think>"]
 END_TOKEN_ID1 = 3417
 END_TOKEN_ID2 = 30975
@@ -230,19 +230,19 @@ def create_prompt(user_input: str, tools: str) -> str:
         "---\n"
         "Here are some examples:\n\n"
         "User: Multiply 45 by 11\n"
-        'Assistant: {"fn_name": "fn_multiply_numbers", '
-        '"args": {"a": 45.0, "b": 11.0}}\n\n'
+        'Assistant: {"name": "fn_multiply_numbers", '
+        '"parameters": {"a": 45.0, "b": 11.0}}\n\n'
         "User: can you reverse the word 'banana'?\n"
-        'Assistant: {"fn_name": "fn_reverse_string", '
-        '"args": {"s": "banana"}}\n\n'
+        'Assistant: {"name": "fn_reverse_string", '
+        '"parameters": {"s": "banana"}}\n\n'
         "User: Substitute the digits in the string "
         "'Hello 34 I'm 233 years old' with 'NUMBERS'\n"
-        'Assistant: {"fn_name": "fn_substitute_string_with_regex", '
-        '"args": {"source_string": "Hello 34 I\'m 233 years old", '
+        'Assistant: {"name": "fn_substitute_string_with_regex", '
+        '"parameters": {"source_string": "Hello 34 I\'m 233 years old", '
         '"regex": "\\\\d+", "replacement": "NUMBERS"}}\n\n'
         "User: Replace vowels in 'hello' with '*'\n"
-        'Assistant: {"fn_name": "fn_substitute_string_with_regex", '
-        '"args": {"source_string": "hello", '
+        'Assistant: {"name": "fn_substitute_string_with_regex", '
+        '"parameters": {"source_string": "hello", '
         '"regex": "[aeiouAEIOU]", "replacement": "*"}}\n'
         "---\n\n"
         "Now, answer the following request. Only provide the JSON for "
