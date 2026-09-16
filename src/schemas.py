@@ -22,7 +22,8 @@ class FunctionDefinition(BaseModel):
     Attributes:
         name (str): Name of the function.
         description (str): Description of what the function does.
-        parameters (dict[str, ParameterSchema]): Mapping of argument names to their schema.
+        parameters (dict[str, ParameterSchema]): Mapping of argument names
+        to their schema.
         returns (ReturnSchema): The return type schema.
     """
     name: str

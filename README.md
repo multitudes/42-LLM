@@ -10,6 +10,23 @@ Rather than relying on external API services or standalone inference engines, my
 
 ---
 
+## CLI Usage
+
+The pipeline supports dynamic file paths via command-line arguments using standard `--flag` options. If omitted, the application defaults to reading input schemas from `data/input/` and writing results to `data/output/`.
+
+To execute the project with explicit paths, run:
+
+```bash
+uv run python -m src --functions_definition data/input/functions_definition.json --input data/input/function_calling_tests.json --output data/output/function_calling_name.json
+
+```
+
+* **`--functions_definition`**: Path to the JSON file containing tool definitions and parameter specifications.
+* **`--input`**: Path to the JSON file containing test prompts to be evaluated by the LLM.
+* **`--output`**: Destination path where the resulting function calls and parsed arguments will be serialized.
+
+---
+
 ## Documentation Index
 
 For deep dives into specific sub-components of my project, check the dedicated guides in the `docs/` directory:
@@ -121,8 +138,6 @@ This informational logging originates from the underlying generation configurati
 * `do_sample`: Set to `True` to enable probabilistic sampling during generation.
 
 For further analysis of generation flags, refer to [`docs/hugginface.md`](docs/hugginface.md).
-
----
 
 ## External References
 
