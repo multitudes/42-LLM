@@ -11,13 +11,12 @@ from .bpe_tokenizer import (
     initialize_tokenizer,
 )
 from .utils import (
+    INPUT_FILE,
     extract_json_from_response,
     get_input_prompts,
     get_tool_list,
     write_output_to_file,
 )
-
-INPUT_FILE = "input/function_calling_tests.json"
 
 
 def main(input_file: str = INPUT_FILE) -> None:
