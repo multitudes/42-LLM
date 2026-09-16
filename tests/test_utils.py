@@ -1,6 +1,6 @@
-import pytest
-
 from pathlib import Path
+
+import pytest
 
 from src.schemas import FunctionDefinition, SelectedFunction
 from src.utils import (
@@ -62,7 +62,7 @@ def test_enforce_arg_types() -> None:
             "args_names": ["a", "b", "name"],
             "args_types": {"a": "float", "b": "int", "name": "str"},
             "return_type": "float",
-        }
+        },
     ]
     raw_args = {"a": "10", "b": "5", "name": 123}
     cleaned = enforce_arg_types("fn_multiply", raw_args, functions_def)
@@ -75,7 +75,7 @@ def test_enforce_arg_types() -> None:
 
 
 def test_extract_json_from_response_with_think(
-        monkeypatch: pytest.MonkeyPatch
+        monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
     Verify JSON extraction successfully strips think blocks and parses valid
@@ -89,7 +89,7 @@ def test_extract_json_from_response_with_think(
                 args_names=["a", "b"],
                 args_types={"a": "float", "b": "float"},
                 return_type="float",
-            )
+            ),
         ],
     )
 
@@ -117,7 +117,7 @@ def test_extract_json_from_response_invalid() -> None:
 
 
 def test_write_output_to_file(tmp_path: Path,
-                              monkeypatch: pytest.MonkeyPatch
+                              monkeypatch: pytest.MonkeyPatch,
                               ) -> None:
     """Verify write_output_to_file successfully serializes models to JSON."""
     out_file = tmp_path / "output" / "results.json"

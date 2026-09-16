@@ -1,9 +1,8 @@
 # Using Hugginface
 
-So we are not allowed to use transformers package but because it is already in the 
-llm_sdk...
 I need to instantiate the model with the `Small_LLM_Model` class
-```
+
+```python
 llm = Small_LLM_Model(model_name="Qwen/Qwen3-0.6B")  # or your preferred model
 
 prompt = "Is 4 an even number?"
@@ -13,8 +12,8 @@ print("Logits for next token:", logits)
 
 vocab_path = llm.get_path_to_tokenizer_file()
 print("Vocabulary file path:", vocab_path)
-```
-```
+
+# output
 tokenizer_config.json: 9.73kB [00:00, 5.50MB/s]
 vocab.json: 2.78MB [00:00, 19.6MB/s]
 merges.txt: 1.67MB [00:00, 25.0MB/s]

@@ -1,12 +1,13 @@
-import pytest
+from typing import cast
 
+import pytest
 from pydantic import ValidationError
-from typing import Any, cast
+
 from src.schemas import (
     FunctionDefinition,
     SelectedFunction,
-    ToolParameter,
     Tool,
+    ToolParameter,
 )
 
 
@@ -32,7 +33,7 @@ def test_function_definition_invalid() -> None:
             {
                 "fn_name": "fn_add_numbers",
                 # Missing args_names, args_types, return_type
-            }
+            },
         )
 
 
@@ -62,7 +63,7 @@ def test_selected_function_valid() -> None:
 def test_tool_parameter_defaults() -> None:
     """Verify ToolParameter applies default values correctly."""
     param = ToolParameter(
-        properties={"city": {"type": "string", "description": "Target city"}}
+        properties={"city": {"type": "string", "description": "Target city"}},
     )
     assert param.type == "object"
     assert param.required == []
@@ -84,7 +85,7 @@ def test_tool_structure_valid() -> None:
                     "city": {
                         "type": "string",
                         "description": "The city name",
-                    }
+                    },
                 },
                 "required": ["city"],
             },
@@ -106,6 +107,6 @@ def test_tool_parameter_validation_error() -> None:
         # properties should be a dict, not a list
         ToolParameter(
             properties=cast(
-                dict[str, dict[str, str]], ["invalid_property_list"]
-            )
+                "dict[str, dict[str, str]]", ["invalid_property_list"],
+            ),
         )

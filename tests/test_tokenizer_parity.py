@@ -7,12 +7,20 @@ import pytest
 from llm_sdk import Small_LLM_Model
 from src.bpe_tokenizer import bpe_tokenize, custom_decode
 
+# because of the linting
+TokenizerAssets = tuple[
+    Small_LLM_Model,
+    dict[str, int],
+    dict[tuple[str, str], int],
+    dict[int, str],
+]
+
 
 def load_vocab_json(path: str) -> dict[str, int]:
     vocab_path = Path(path)
     with vocab_path.open("r", encoding="utf-8") as f:
         data = json.load(f)
-        return cast(dict[str, int], data)
+        return cast("dict[str, int]", data)
 
 
 def load_merges_txt(path: str) -> dict[tuple[str, str], int]:
@@ -66,7 +74,10 @@ TEST_STRINGS = [
 
 
 @pytest.mark.parametrize("sample_text", TEST_STRINGS)
-def test_encode_parity(tokenizer_assets, sample_text: str):
+def test_encode_parity(
+    tokenizer_assets: TokenizerAssets,
+    sample_text: str,
+) -> None:
     """
     Verify that custom bpe_tokenize produces identical token IDs
     to Small_LLM_Model.encode (Hugging Face reference).
@@ -88,7 +99,10 @@ def test_encode_parity(tokenizer_assets, sample_text: str):
 
 
 @pytest.mark.parametrize("sample_text", TEST_STRINGS)
-def test_decode_parity(tokenizer_assets, sample_text: str):
+def test_decode_parity(
+    tokenizer_assets: TokenizerAssets,
+    sample_text: str,
+) -> None:
     """
     Verify that custom_decode produces identical plain text output
     to Small_LLM_Model.decode (Hugging Face reference).

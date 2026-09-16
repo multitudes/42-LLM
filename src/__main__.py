@@ -35,6 +35,7 @@ def main(input_file: str = INPUT_FILE) -> None:
     try:
         llm = Small_LLM_Model()
         vocab_path = llm.get_path_to_tokenizer_file()
+        print("Vocabulary file path:", vocab_path)
         vocab, merge_ranks = initialize_tokenizer(vocab_path)
         outputs = []
         tools = get_tool_list()
