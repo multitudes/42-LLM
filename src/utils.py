@@ -192,7 +192,8 @@ def extract_json_from_response(
         ValueError,
         AttributeError,
     ):
-    return SelectedFunction(prompt=prompt, name="", parameters={})
+        print("Error parsing the JSON object.")
+        return SelectedFunction(prompt=prompt, name="", parameters={})
 
 
 def write_output_to_file(
