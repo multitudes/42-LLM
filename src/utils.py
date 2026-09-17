@@ -148,7 +148,7 @@ def extract_json_from_response(
     clean_output = response.replace(
         "</tool_call>", "").replace("<|im_end|>", "").strip()
 
-    # Extract the JSON block - just defensive programming, 
+    # Extract the JSON block - just defensive programming,
     # the model should always return a JSON object
     pattern = r'\{.*\}'
     match = re.search(pattern, clean_output, re.DOTALL)
