@@ -11,13 +11,21 @@ END_TOKEN_ID1 = 3417
 END_TOKEN_ID2 = 30975
 EXPECTED_MERGE_TOKENS = 2
 MERGES_PATH = "merges.txt"
+
 SPECIAL_TOKENS = {
     "<|im_start|>": 151644,
     "<|im_end|>": 151645,
+    "<tool_call>": 151657,
+    "</tool_call>": 151658,
     "<think>": 151667,
     "</think>": 151668,
 }
-# These token IDs to signal end of json generation '}}' and '\"}}"
+
+STOP_TOKEN_IDS = {
+    151658,  # </tool_call>
+    151645,  # <|im_end|>
+    151643,  # <|endoftext|>
+}
 
 
 def initialize_tokenizer(
@@ -198,13 +206,12 @@ def custom_decode(
         The decoded string representation.
 
     """
-    skip_ids = set(SPECIAL_TOKENS.values())
-    tokens = [id_to_token.get(i, "<unk>") for i in ids if i not in skip_ids]
+    tokens = [id_to_token.get(i, "<unk>") for i in ids]
 
     text = "".join(tokens)
-    text = text.replace("Ġ", " ").replace("Ċ", "\n").replace("ĉ", "\t")
+    print(f"\norig response: {text}\n")
 
-    print(f"\n\nllm output: {text}", end="")
+    text = text.replace("Ġ", " ").replace("Ċ", "\n").replace("ĉ", "\t")
     return text
 
 
@@ -223,36 +230,47 @@ def create_prompt(user_input: str, tools: str) -> str:
     system_msg = (
         "You are a helpful assistant that uses tools. "
         "Based on the user's request, you must call the "
-        "appropriate tool with the correct arguments. "
-        "When constructing regular expressions, use character sets like [aeiou] "
-        "for matching specific characters, \\d+ for digits, and \\b for word boundaries.\n\n"
+        "appropriate tool with the correct arguments by wrapping the JSON "
+        "in <tool_call> tags.\n\n"
+        "When constructing regular expressions, use character sets like [aeiou]"
+        "for matching specific characters, \\d+ for digits, and \\b for word "
+        "boundaries.\n\n"
         f"You have access to the following tools:\n{tools}\n\n"
         "---\n"
         "Here are some examples:\n\n"
         "User: Multiply 45 by 11\n"
-        'Assistant: {"name": "fn_multiply_numbers", '
+        "Assistant: <tool_call>\n"
+        '{"name": "fn_multiply_numbers", '
         '"parameters": {"a": 45.0, "b": 11.0}}\n\n'
+        "</tool_call>\n"
         "User: can you reverse the word 'banana'?\n"
-        'Assistant: {"name": "fn_reverse_string", '
+        "Assistant: <tool_call>\n"
+        '{"name": "fn_reverse_string", '
         '"parameters": {"s": "banana"}}\n\n'
+        "</tool_call>\n"
         "User: Substitute the digits in the string "
         "'Hello 34 I'm 233 years old' with 'NUMBERS'\n"
-        'Assistant: {"name": "fn_substitute_string_with_regex", '
+        "</tool_call>\n"
+        "Assistant: <tool_call>\n"
+        '{"name": "fn_substitute_string_with_regex", '
         '"parameters": {"source_string": "Hello 34 I\'m 233 years old", '
         '"regex": "\\\\d+", "replacement": "NUMBERS"}}\n\n'
+        "</tool_call>\n"
         "User: Replace vowels in 'hello' with '*'\n"
-        'Assistant: {"name": "fn_substitute_string_with_regex", '
+        "Assistant: <tool_call>\n"
+        '{"name": "fn_substitute_string_with_regex", '
         '"parameters": {"source_string": "hello", '
         '"regex": "[aeiouAEIOU]", "replacement": "*"}}\n'
+        "</tool_call>\n"
         "---\n\n"
-        "Now, answer the following request. Only provide the JSON for "
-        "the tool call."
     )
 
     return (
         f"<|im_start|>system\n{system_msg}<|im_end|>\n"
-        f"<|im_start|>user\n{user_input}/no_think<|im_end|>\n"
-        "<|im_start|>assistant\n"
+        f"<|im_start|>user\n{user_input}<|im_end|>\n"
+        # Notice we end by pre-filling the exact start of the tool call
+        # This completely bypasses the model's desire to output <think>
+        f"<|im_start|>assistant\n<tool_call>\n"
     )
 
 
@@ -278,7 +296,6 @@ def get_answer_ids(
 
     """
     answer_ids: list[int] = []
-    stop_tokens = {END_TOKEN_ID1, END_TOKEN_ID2}
 
     for _ in range(MAX_TOKENS):
         print(".", end="", flush=True)
@@ -290,8 +307,7 @@ def get_answer_ids(
         input_ids.append(next_token_id)
         answer_ids.append(next_token_id)
 
-        # Fixes PLR1714
-        if next_token_id in stop_tokens:
+        if next_token_id in STOP_TOKEN_IDS:
             break
 
     return answer_ids

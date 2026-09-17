@@ -2,7 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from src.schemas import FunctionDefinition, SelectedFunction, ParameterSchema, ReturnSchema
+from src.schemas import (
+    FunctionDefinition,
+    SelectedFunction,
+)
 from src.utils import (
     enforce_arg_types,
     extract_json_from_response,
@@ -91,7 +94,8 @@ def test_extract_json_from_response_with_think(
             FunctionDefinition.model_validate({
                 "name": "multiply",
                 "description": "Multiply numbers",
-                "parameters": {"a": {"type": "number"}, "b": {"type": "number"}},
+                "parameters": {"a": {"type": "number"},
+                               "b": {"type": "number"}},
                 "returns": {"type": "number"},
             })
         ],
@@ -100,7 +104,8 @@ def test_extract_json_from_response_with_think(
     prompt = "Multiply numbers"
     response = (
         '</think>\n'
-        'Here is your answer: {"name": "multiply", "parameters": {"a": 2, "b": 4}}'
+        'Here is your answer: {"name": "multiply", '
+        '"parameters": {"a": 2, "b": 4}}'
     )
 
     result = extract_json_from_response(prompt, response)

@@ -37,8 +37,8 @@ def test_bpe_tokenize_with_special_tokens() -> None:
 
 def test_custom_decode() -> None:
     """
-    Verify decoding filters special tokens and restores whitespace
-    formatting.
+    Verify custom_decode preserves special structural tokens and restores
+    whitespace markers (Ġ, Ċ, ĉ).
     """
     # Setup dummy vocabulary inverse lookup (id_to_token)
     id_to_token = {
@@ -51,10 +51,10 @@ def test_custom_decode() -> None:
     ids = [151644, 1, 2, 151645]
     decoded = custom_decode(ids, id_to_token)
 
-    # Special tokens should be stripped, BPE markers replaced
-    assert "<|im_start|>" not in decoded
-    assert "<|im_end|>" not in decoded
-    assert decoded == "Hello world\nNewlines"
+    # Special structural tokens are retained for downstream parsing
+    assert "<|im_start|>" in decoded
+    assert "<|im_end|>" in decoded
+    assert decoded == "<|im_start|>Hello world\nNewlines<|im_end|>"
 
 
 def test_create_prompt_format() -> None:

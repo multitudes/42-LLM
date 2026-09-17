@@ -14,9 +14,11 @@ from .schemas import (
     ToolParameter,
 )
 
+# defaults unless I specify a different path
 INPUT_FILE = "data/input/function_calling_tests.json"
 OUTPUT_FILE = "data/output/function_calls.json"
 TOOLS_DEFINITION_FILE = "data/input/functions_definition.json"
+
 THINK_TAG = "</think>"
 
 
@@ -24,9 +26,9 @@ def get_functions(
     tools_file: str | Path | None = None
 ) -> list[FunctionDefinition]:
     """Loads function definitions from the specified tools definition file."""
-    # Resolve default dynamically so monkeypatch works correctly
+
     if tools_file is None:
-        tools_file = globals().get("TOOLS_DEFINITION_FILE", TOOLS_DEFINITION_FILE)
+        tools_file = TOOLS_DEFINITION_FILE
 
     tools_path = Path(tools_file)
     if not tools_path.exists():
@@ -141,25 +143,37 @@ def extract_json_from_response(
     tools_file: str | Path = TOOLS_DEFINITION_FILE,
 ) -> SelectedFunction:
     """Extracts and parses a JSON object from the model's full output string."""
-    if THINK_TAG in response:
-        response = response.split(THINK_TAG, 1)[1].strip()
 
+    # 1. Handle THINK_TAGs robustly.
+    # Takes everything AFTER the final think tag, ignoring how many there are.
+    if THINK_TAG in response:
+        response = response.split(THINK_TAG)[-1].strip()
+
+    # 2. Strip the structural tags we know might be lingering
+    clean_output = response.replace(
+        "</tool_call>", "").replace("<|im_end|>", "").strip()
+
+    # 3. Extract the JSON block
     pattern = r'\{.*\}'
-    match = re.search(pattern, response, re.DOTALL)
+    match = re.search(pattern, clean_output, re.DOTALL)
+
     if not match:
         print("No JSON object found in the response.")
         return SelectedFunction(prompt=prompt, name="", parameters={})
 
     json_str = match.group(0)
 
+    # 4. Parse, validate, and enforce types
     try:
         data = json.loads(json_str)
         data["prompt"] = prompt
+
         parsed_fn = SelectedFunction.model_validate(data)
 
         name = parsed_fn.name
         if not name:
             return SelectedFunction(prompt=prompt, name="", parameters={})
+
         parameters = (
             parsed_fn.parameters if isinstance(
                 parsed_fn.parameters, dict) else {}
@@ -178,11 +192,8 @@ def extract_json_from_response(
         TypeError,
         ValueError,
         AttributeError,
-    ) as e:
-        # TEMP DEBUG: Print and re-raise so pytest shows the real traceback
-        print(f"CRITICAL PARSE ERROR: {e} | JSON_STR was: {json_str}")
-        raise
-        # return SelectedFunction(prompt=prompt, name="", parameters={})
+    ):
+        return SelectedFunction(prompt=prompt, name="", parameters={})
 
 
 def write_output_to_file(
@@ -190,7 +201,9 @@ def write_output_to_file(
     output_file: str | Path = OUTPUT_FILE,
 ) -> None:
     """Serializes the list of SelectedFunction models to a JSON file."""
+    # Path() is idempotent so if the output_file is a Path it changes nothing
     path = Path(output_file)
+
     # Ensure parent directories exist before writing
     path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -51,6 +51,9 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     """Main entry point for function-calling LLM pipeline."""
     args = parse_args()
+    print("Tool file path:", args.functions_definition)
+    print("Input file path:", args.input)
+    print("Output file path:", args.output)
 
     try:
         llm = Small_LLM_Model()
@@ -78,6 +81,7 @@ def main() -> None:
                 llm_output,
                 tools_file=args.functions_definition,
             )
+            print(result)
             outputs.append(result)
 
         write_output_to_file(outputs, output_file=args.output)
