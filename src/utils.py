@@ -144,16 +144,12 @@ def extract_json_from_response(
 ) -> SelectedFunction:
     """Extracts and parses a JSON object from the model's full output string."""
 
-    # 1. Handle THINK_TAGs robustly.
-    # Takes everything AFTER the final think tag, ignoring how many there are.
-    if THINK_TAG in response:
-        response = response.split(THINK_TAG)[-1].strip()
-
-    # 2. Strip the structural tags we know might be lingering
+    # Strip the structural tags that might be lingering
     clean_output = response.replace(
         "</tool_call>", "").replace("<|im_end|>", "").strip()
 
-    # 3. Extract the JSON block
+    # Extract the JSON block - just defensive programming, 
+    # the model should always return a JSON object
     pattern = r'\{.*\}'
     match = re.search(pattern, clean_output, re.DOTALL)
 
@@ -163,7 +159,7 @@ def extract_json_from_response(
 
     json_str = match.group(0)
 
-    # 4. Parse, validate, and enforce types
+    # Parse, validate, and enforce types
     try:
         data = json.loads(json_str)
         data["prompt"] = prompt
@@ -179,6 +175,9 @@ def extract_json_from_response(
                 parsed_fn.parameters, dict) else {}
         )
 
+        # validate against the function definitions and enforce types
+        # example the model might return a string for a number, like "11.0"
+        # we want to convert it to a float
         functions_def = get_functions(tools_file=tools_file)
         functions_def_dicts = [fn.model_dump() for fn in functions_def]
 
@@ -193,7 +192,7 @@ def extract_json_from_response(
         ValueError,
         AttributeError,
     ):
-        return SelectedFunction(prompt=prompt, name="", parameters={})
+    return SelectedFunction(prompt=prompt, name="", parameters={})
 
 
 def write_output_to_file(

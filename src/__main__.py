@@ -67,7 +67,7 @@ def main() -> None:
         id_to_token = {v: k for k, v in vocab.items()}
 
         for user_prompt in get_input_prompts(file=args.input):
-            print(f"\n\nProcessing prompt: {user_prompt}")
+            print(f"\n---\nProcessing prompt: {user_prompt}")
             prompt = create_prompt(user_prompt, tools)
             input_ids = bpe_tokenize(
                 prompt,

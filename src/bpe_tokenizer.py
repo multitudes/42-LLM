@@ -209,7 +209,7 @@ def custom_decode(
     tokens = [id_to_token.get(i, "<unk>") for i in ids]
 
     text = "".join(tokens)
-    print(f"\norig response: {text}\n")
+    print(f"\n\norig response: {text}\n")
 
     text = text.replace("Ġ", " ").replace("Ċ", "\n").replace("ĉ", "\t")
     return text
@@ -299,9 +299,13 @@ def get_answer_ids(
 
     for _ in range(MAX_TOKENS):
         print(".", end="", flush=True)
+        # The logits vector returned by the model is a 
+        # list equal to the size of the model's vocabulary
         logits = llm.get_logits_from_input_ids(input_ids)
 
         # Get token index with the highest logit
+        # could use numpy argmax but the llm class returns a python list, 
+        # so we use max with enumerate
         next_token_id = max(enumerate(logits), key=lambda x: x[1])[0]
 
         input_ids.append(next_token_id)
