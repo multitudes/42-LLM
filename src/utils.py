@@ -122,19 +122,50 @@ def enforce_arg_types(
         return parameters
 
     for arg_name, param_details in params_def.items():
-        if arg_name in parameters:
-            arg_type = param_details.get("type")
-            try:
-                if arg_type == "number":
-                    parameters[arg_name] = float(parameters[arg_name])
-                elif arg_type == "integer":
-                    parameters[arg_name] = int(parameters[arg_name])
-                elif arg_type == "string":
-                    parameters[arg_name] = str(parameters[arg_name])
-            except (ValueError, TypeError):
-                pass
+        if arg_name not in parameters:
+            continue
+        arg_type = param_details.get("type")
+        val = parameters[arg_name]
+        try:
+            if arg_type == "number":
+                parameters[arg_name] = float(val)
+
+            elif arg_type == "integer":
+                f_val = float(val)
+                parameters[arg_name] = int(round(f_val))
+
+            elif arg_type == "string":
+                parameters[arg_name] = str(val)
+
+            elif arg_type == "boolean" and not isinstance(val, bool):
+                if isinstance(val, str):
+                    parameters[arg_name] = val.strip(
+                    ).lower() in ("true", "1", "yes")
+                else:
+                    parameters[arg_name] = bool(val)
+
+        except (ValueError, TypeError):
+            pass
 
     return parameters
+
+
+# raw_decode reads token-by-token according to JSON spec.
+def extract_first_json_string(text: str) -> str | None:
+    decoder = json.JSONDecoder()
+    pos = 0
+    while pos < len(text):
+        start = text.find("{", pos)
+        if start == -1:
+            break
+        try:
+            obj, end = decoder.raw_decode(text[start:])
+            if isinstance(obj, dict):
+                return text[start: start + end]
+        except json.JSONDecodeError:
+            pass
+        pos = start + 1
+    return None
 
 
 def extract_json_from_response(
@@ -144,20 +175,20 @@ def extract_json_from_response(
 ) -> SelectedFunction:
     """Extracts and parses a JSON object from the model's full output string."""
 
-    # Strip the structural tags that might be lingering
-    clean_output = response.replace(
-        "</tool_call>", "").replace("<|im_end|>", "").strip()
+    # Strip structural control tags
+    clean_output = (
+        response.replace(
+            "</tool_call>", "")
+        .replace("<|im_end|>", "")
+        .strip()
+    )
 
-    # Extract the JSON block - just defensive programming,
-    # the model should always return a JSON object
-    pattern = r'\{.*\}'
-    match = re.search(pattern, clean_output, re.DOTALL)
+    # Extract the first valid balanced JSON object string
+    json_str = extract_first_json_string(clean_output)
 
-    if not match:
-        print("No JSON object found in the response.")
+    if not json_str:
+        print("No valid JSON object found in the response.")
         return SelectedFunction(prompt=prompt, name="", parameters={})
-
-    json_str = match.group(0)
 
     # Parse, validate, and enforce types
     try:
@@ -213,3 +244,5 @@ def write_output_to_file(
             json.dump(data, f, indent=4)
     except Exception as e:
         print(f"Error writing output to file: {e}")
+        # Re-raise to ensure main() terminates with non-zero exit status
+        raise
