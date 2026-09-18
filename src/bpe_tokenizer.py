@@ -180,6 +180,11 @@ def bpe_tokenize(
                 new_tokens.append(tokens[i])
                 i += 1
         tokens = new_tokens
+    # retrieves the ID for unknown tokens as fallback
+    unk_id = vocab.get("<unk>")
+    # this is to avoid dropping unknown tokens
+    if unk_id is not None:
+        return [vocab.get(token, unk_id) for token in tokens]
 
     return [vocab[token] for token in tokens if token in vocab]
 
