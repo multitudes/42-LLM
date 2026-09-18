@@ -63,7 +63,8 @@ def test_bpe_tokenize_unknown_tokens_mapped_to_unk():
     token_ids = bpe_tokenize(input_text, vocab, merge_ranks)
 
     # 1. Verify sequence length is preserved (unknown tokens are not dropped)
-    # Expected characters in sequence: 'c', 'a', 't', ' ', 'd', 'o', 'g' (7 tokens)
+    # Expected characters in sequence: 'c', 'a', 't', ' ', 'd', 'o', 'g'
+    # (7 tokens)
     assert len(token_ids) == len(input_text)
 
     # 2. Verify 'cat' maps to [1, 2, 3]
