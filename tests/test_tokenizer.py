@@ -10,10 +10,13 @@ def test_tokenizer_initialization() -> None:
     """Verify tokenizer loads without crashing."""
 
     llm = Small_LLM_Model()
-    vocab_path = Path(llm.get_path_to_tokenizer_file())
+    tokenizer_path = Path(llm.get_path_to_tokenizer_file())
+    print("Tokenizer file path:", tokenizer_path)
+    merges_path = Path(llm.get_path_to_merges_file())
 
-    tokenizer = initialize_tokenizer(vocab_path=vocab_path)
-    assert tokenizer is not None
+    vocab, merge_ranks = initialize_tokenizer(tokenizer_path, merges_path)
+    assert vocab is not None
+    assert merge_ranks is not None
 
 
 def test_extract_json_valid() -> None:

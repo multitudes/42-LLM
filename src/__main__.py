@@ -1,6 +1,7 @@
 # src/__main__.py
 import argparse
 import sys
+from pathlib import Path
 
 from llm_sdk import Small_LLM_Model
 
@@ -55,11 +56,16 @@ def main() -> None:
     print("Input file path:", args.input)
     print("Output file path:", args.output)
 
+    llm = Small_LLM_Model()
+    tokenizer_path = Path(llm.get_path_to_tokenizer_file())
+    print("Tokenizer file path:", tokenizer_path)
+    merges_path = Path(llm.get_path_to_merges_file())
+    print("Merge file path:", merges_path)
+    vocab_path = Path(llm.get_path_to_vocab_file())
+    print(f"Vocab file path: {vocab_path}")
+
     try:
-        llm = Small_LLM_Model()
-        vocab_path = llm.get_path_to_tokenizer_file()
-        print("Vocabulary file path:", vocab_path)
-        vocab, merge_ranks = initialize_tokenizer(vocab_path)
+        vocab, merge_ranks = initialize_tokenizer(tokenizer_path, merges_path)
         outputs = []
         tools = get_tool_list(tools_file=args.functions_definition)
 

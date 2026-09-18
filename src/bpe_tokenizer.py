@@ -1,7 +1,8 @@
 # src/bpe_tokenizer.py
-import json
-import re
 from itertools import pairwise
+import re
+import json
+
 from pathlib import Path
 from typing import Any, cast
 
@@ -10,7 +11,6 @@ MAX_TOKENS = 92
 END_TOKEN_ID1 = 3417
 END_TOKEN_ID2 = 30975
 EXPECTED_MERGE_TOKENS = 2
-MERGES_PATH = "merges.txt"
 
 SPECIAL_TOKENS = {
     "<|im_start|>": 151644,
@@ -29,7 +29,8 @@ STOP_TOKEN_IDS = {
 
 
 def initialize_tokenizer(
-    vocab_path: str | Path,
+    tokenizer_path: Path,
+    merges_path: Path,
 ) -> tuple[dict[str, int], dict[tuple[str, str], int]]:
     """
     Initializes the BPE tokenizer by loading vocabulary and merge ranks.
@@ -51,12 +52,9 @@ def initialize_tokenizer(
         fails.
 
     """
-    path = Path(vocab_path)
-    merges_path = Path(MERGES_PATH)
-
-# 1. Load vocabulary JSON
+    # Load vocabulary JSON
     try:
-        with path.open("r", encoding="utf-8") as f:
+        with tokenizer_path.open("r", encoding="utf-8") as f:
             raw_data = json.load(f)
 
             # Check if it's a nested HuggingFace tokenizer.json format
@@ -67,7 +65,7 @@ def initialize_tokenizer(
                 vocab = cast("dict[str, int]", raw_data)
 
     except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
-        msg = f"Error loading vocabulary from {path}: {e}"
+        msg = f"Error loading vocabulary from {tokenizer_path}: {e}"
         raise RuntimeError(msg) from e
 
     # Ensure special tokens are included
@@ -75,7 +73,7 @@ def initialize_tokenizer(
         if tok not in vocab:
             vocab[tok] = tid
 
-    # 2. Load merge rules and build rank map
+    # Load merge rules and build rank map
     try:
         with merges_path.open("r", encoding="utf-8") as f:
             merges = [
