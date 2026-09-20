@@ -11,13 +11,46 @@ from src.bpe_tokenizer import (
 from src.schemas import SelectedFunction
 from src.utils import extract_json_from_response
 
+import pytest
 
-def test_tokenizer_initialization() -> None:
-    """Verify tokenizer loads without crashing."""
+class DummyModel:
+    """Stub replacing AutoModelForCausalLM without loading weights."""
+    def to(self, device):
+        return self
 
+    def eval(self):
+        return self
+
+    def parameters(self):
+        return []
+
+def test_tokenizer_initialization_fast(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Verify tokenizer initialization using pure pytest monkeypatching."""
+
+    # 1. Bypass heavy model loading with the dummy class
+    monkeypatch.setattr(
+        "transformers.AutoModelForCausalLM.from_pretrained",
+        lambda *args, **kwargs: DummyModel(),
+    )
+
+    # 2. Setup dummy local files
+    dummy_tokenizer = tmp_path / "tokenizer.json"
+    dummy_merges = tmp_path / "merges.txt"
+    dummy_tokenizer.write_text('{"model": {"vocab": {"<|endoftext|>": 0}}}')
+    dummy_merges.write_text("#version: 0.2\n")
+
+    # 3. Patch hf_hub_download to return local paths
+    monkeypatch.setattr(
+        "llm_sdk.hf_hub_download",
+        lambda repo_id, filename, **kwargs: str(tmp_path / filename),
+    )
+
+    # 4. Execute test
     llm = Small_LLM_Model()
     tokenizer_path = Path(llm.get_path_to_tokenizer_file())
-    print("Tokenizer file path:", tokenizer_path)
     merges_path = Path(llm.get_path_to_merges_file())
 
     vocab, merge_ranks = initialize_tokenizer(tokenizer_path, merges_path)

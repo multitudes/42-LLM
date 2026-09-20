@@ -61,8 +61,8 @@ def main() -> None:
     print("Tokenizer file path:", tokenizer_path)
     merges_path = Path(llm.get_path_to_merges_file())
     print("Merge file path:", merges_path)
-    vocab_path = Path(llm.get_path_to_vocab_file())
-    print(f"Vocab file path: {vocab_path}")
+    # vocab_path = Path(llm.get_path_to_vocab_file())
+    # print(f"Vocab file path: {vocab_path}")
 
     try:
         vocab, merge_ranks = initialize_tokenizer(tokenizer_path, merges_path)
