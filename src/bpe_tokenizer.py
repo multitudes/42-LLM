@@ -241,7 +241,7 @@ def custom_decode(
 
 @lru_cache(maxsize=1)
 def load_control_tokens(tokenizer_path: str | Path) -> tuple[str, ...]:
-    """Loads special control tokens dynamically from a HuggingFace tokenizer.json file."""
+    """Loads special control tokens dynamically from a tokenizer.json file."""
     path = Path(tokenizer_path)
     if not path.is_file():
         print(f"Warning: Tokenizer file not found at {path}")
@@ -253,7 +253,7 @@ def load_control_tokens(tokenizer_path: str | Path) -> tuple[str, ...]:
 
         added_tokens = data.get("added_tokens", [])
 
-        # Extract tokens marked as special (e.g. <|im_start|>, <|im_end|>, <|endoftext|>)
+        # Extract tokens marked as special (e.g. <|im_start|>, <|im_end|>
         # or custom structural formatting markers
         control_tokens = [
             token["content"]
@@ -269,6 +269,7 @@ def load_control_tokens(tokenizer_path: str | Path) -> tuple[str, ...]:
     except (json.JSONDecodeError, OSError) as e:
         print(f"Warning: Failed to parse tokenizer file at {path}: {e}")
         return ()
+
 
 def sanitize_input(text: str) -> str:
     """Strips control tokens from user input to prevent prompt injection."""

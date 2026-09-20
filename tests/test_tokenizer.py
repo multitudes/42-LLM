@@ -1,5 +1,7 @@
-from typing import Any
-from src.schemas import FunctionDefinition
+from src.schemas import (
+    FunctionDefinition,
+    SelectedFunction,
+)
 import pytest
 from pathlib import Path
 
@@ -8,21 +10,24 @@ from src.bpe_tokenizer import (
     initialize_tokenizer,
     bpe_tokenize,
 )
-from src.schemas import SelectedFunction
 from src.utils import extract_json_from_response
 
-import pytest
+
+from typing import Any
+
 
 class DummyModel:
     """Stub replacing AutoModelForCausalLM without loading weights."""
-    def to(self, device):
+
+    def to(self, device: Any) -> "DummyModel":
         return self
 
-    def eval(self):
+    def eval(self) -> "DummyModel":
         return self
 
-    def parameters(self):
+    def parameters(self) -> list[Any]:
         return []
+
 
 def test_tokenizer_initialization_fast(
     monkeypatch: pytest.MonkeyPatch,
@@ -125,7 +130,10 @@ def test_bpe_tokenize_without_unk_in_vocab() -> None:
 def test_extract_json_missing_required_parameter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Verify that extract_json_from_response returns an empty SelectedFunction when a required parameter is missing."""
+    """
+    Verify that extract_json_from_response returns an empty SelectedFunction
+    when a required parameter is missing.
+    """
 
     # 1. Mock tool schema requiring both 'a' and 'b'
     mock_functions = [
