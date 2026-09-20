@@ -1,4 +1,5 @@
 # src/bpe_tokenizer.py
+from functools import lru_cache
 from itertools import pairwise
 import re
 import json
@@ -13,10 +14,30 @@ END_TOKEN_ID2 = 30975
 EXPECTED_MERGE_TOKENS = 2
 
 SPECIAL_TOKENS = {
+    "<|endoftext|>": 151643,
     "<|im_start|>": 151644,
     "<|im_end|>": 151645,
+    "<|object_ref_start|>": 151646,
+    "<|object_ref_end|>": 151647,
+    "<|box_start|>": 151648,
+    "<|box_end|>": 151649,
+    "<|quad_start|>": 151650,
+    "<|quad_end|>": 151651,
+    "<|vision_start|>": 151652,
+    "<|vision_end|>": 151653,
+    "<|vision_pad|>": 151654,
+    "<|image_pad|>": 151655,
+    "<|video_pad|>": 151656,
     "<tool_call>": 151657,
     "</tool_call>": 151658,
+    "<|fim_prefix|>": 151659,
+    "<|fim_middle|>": 151660,
+    "<|fim_suffix|>": 151661,
+    "<|fim_pad|>": 151662,
+    "<|repo_name|>": 151663,
+    "<|file_sep|>": 151664,
+    "<tool_response>": 151665,
+    "</tool_response>": 151666,
     "<think>": 151667,
     "</think>": 151668,
 }
@@ -218,8 +239,39 @@ def custom_decode(
     return text
 
 
+@lru_cache(maxsize=1)
+def load_control_tokens(tokenizer_path: str | Path) -> tuple[str, ...]:
+    """Loads special control tokens dynamically from a HuggingFace tokenizer.json file."""
+    path = Path(tokenizer_path)
+    if not path.is_file():
+        print(f"Warning: Tokenizer file not found at {path}")
+        return ()
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        added_tokens = data.get("added_tokens", [])
+
+        # Extract tokens marked as special (e.g. <|im_start|>, <|im_end|>, <|endoftext|>)
+        # or custom structural formatting markers
+        control_tokens = [
+            token["content"]
+            for token in added_tokens
+            if isinstance(token, dict)
+            and (
+                token.get("special", False)
+                or token["content"].startswith("<|")
+            )
+        ]
+        return tuple(control_tokens)
+
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"Warning: Failed to parse tokenizer file at {path}: {e}")
+        return ()
+
 def sanitize_input(text: str) -> str:
-    """Strips ChatML control tokens from user-supplied text to prevent prompt injection."""
+    """Strips control tokens from user input to prevent prompt injection."""
     sanitized = text
     for token in SPECIAL_TOKENS:
         sanitized = sanitized.replace(token, "")

@@ -11,9 +11,9 @@ all: install lint test
 
 install:
 	@command -v $(UV) >/dev/null 2>&1 || { \
-		echo "uv not found. Installing..."; \
-		curl -LsSf https://astral.sh/uv/install.sh | sh; \
-		export PATH="$$HOME/.local/bin:$$HOME/.cargo/bin:$$PATH"; \
+		echo "Error: 'uv' is required but not installed."; \
+		echo "Please install uv before running setup (see README.md)."; \
+		exit 1; \
 	}
 	@echo "uv version: $$($(UV) --version)"
 	@if [ ! -f pyproject.toml ]; then \
