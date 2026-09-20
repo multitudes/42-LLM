@@ -1,6 +1,5 @@
 from src.schemas import (
     FunctionDefinition,
-    SelectedFunction,
 )
 import pytest
 from pathlib import Path
@@ -103,9 +102,6 @@ def test_bpe_tokenize_without_unk_in_vocab() -> None:
     assert token_ids == [1, 2, 3]
 
 
-<< << << < HEAD
-
-
 def test_extract_json_missing_required_parameter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -144,7 +140,3 @@ def test_extract_json_missing_required_parameter(
     assert result.name == ""
     assert result.parameters == {}
     assert result.prompt == prompt
-
-
-== == == =
->>>>>> > 2503846 (FIX reorganize imports and duplicated json test function consolidated in test_utils.py)

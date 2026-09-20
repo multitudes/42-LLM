@@ -1,19 +1,25 @@
+from collections.abc import Iterator
 import json
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import pytest
 
 from llm_sdk import Small_LLM_Model
 from src.bpe_tokenizer import bpe_tokenize, custom_decode
 
-# because of the linting
-TokenizerAssets = tuple[
-    Small_LLM_Model,
-    dict[str, int],
-    dict[tuple[str, str], int],
-    dict[int, str],
-]
+
+class DummyModel:
+    """Stub replacing AutoModelForCausalLM without loading weights."""
+
+    def to(self, device: Any) -> "DummyModel":
+        return self
+
+    def eval(self) -> "DummyModel":
+        return self
+
+    def parameters(self) -> list[Any]:
+        return []
 
 
 def load_vocab_json(path: str) -> dict[str, int]:
@@ -24,7 +30,7 @@ def load_vocab_json(path: str) -> dict[str, int]:
 
 
 def load_merges_txt(path: str) -> dict[tuple[str, str], int]:
-    merges = {}
+    merges: dict[tuple[str, str], int] = {}
     merge_path = Path(path)
     with merge_path.open("r", encoding="utf-8") as f:
         rank = 0
@@ -39,29 +45,38 @@ def load_merges_txt(path: str) -> dict[tuple[str, str], int]:
     return merges
 
 
-@pytest.fixture(scope="module")
-def tokenizer_assets() -> tuple[
+# Type definition for fixture return tuple
+TokenizerAssets = tuple[
     Small_LLM_Model,
     dict[str, int],
     dict[tuple[str, str], int],
     dict[int, str],
-]:
-    """
-    Module-scoped fixture to load the model assets and custom tokenizer data
-    once.
-    """
+]
+
+
+@pytest.fixture(scope="module")
+def tokenizer_assets(
+    pytestconfig: pytest.Config,
+) -> Iterator[TokenizerAssets]:
+    """Module-scoped fixture to load assets to skip weight loading."""
+    # Monkeypatch model loading at the fixture level
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        "transformers.AutoModelForCausalLM.from_pretrained",
+        lambda *args, **kwargs: DummyModel(),
+    )
+
     model = Small_LLM_Model()
 
-    # Retrieve paths to model assets using SDK helpers
     vocab_path = model.get_path_to_vocab_file()
     merges_path = model.get_path_to_merges_file()
 
-    # Load vocabulary and merges
     vocab = load_vocab_json(vocab_path)
     merges = load_merges_txt(merges_path)
     id_to_token = {v: k for k, v in vocab.items()}
 
-    return model, vocab, merges, id_to_token
+    yield model, vocab, merges, id_to_token
+    monkeypatch.undo()
 
 
 TEST_STRINGS = [
@@ -78,17 +93,12 @@ def test_encode_parity(
     tokenizer_assets: TokenizerAssets,
     sample_text: str,
 ) -> None:
-    """
-    Verify that custom bpe_tokenize produces identical token IDs
-    to Small_LLM_Model.encode (Hugging Face reference).
-    """
+    """Verify custom bpe_tokenize produces identical IDs to Hugging Face."""
     model, vocab, merges, _ = tokenizer_assets
 
-    # Reference HF Encoding (2D Tensor -> 1D list)
     ref_tensor = model.encode(sample_text)
     ref_ids = ref_tensor.squeeze(0).tolist()
 
-    # Custom BPE Encoding
     custom_ids = bpe_tokenize(sample_text, vocab, merges)
 
     assert custom_ids == ref_ids, (
@@ -103,19 +113,12 @@ def test_decode_parity(
     tokenizer_assets: TokenizerAssets,
     sample_text: str,
 ) -> None:
-    """
-    Verify that custom_decode produces identical plain text output
-    to Small_LLM_Model.decode (Hugging Face reference).
-    """
+    """Verify custom_decode produces identical output to Hugging Face."""
     model, _, _, id_to_token = tokenizer_assets
 
-    # Get baseline token IDs from reference encoder
     token_ids = model.encode(sample_text).squeeze(0).tolist()
 
-    # Reference HF Decoding
     ref_decoded = model.decode(token_ids)
-
-    # Custom Decoding
     custom_decoded = custom_decode(token_ids, id_to_token)
 
     assert custom_decoded == ref_decoded, (
