@@ -17,6 +17,7 @@ from .utils import (
     OUTPUT_FILE,
     TOOLS_DEFINITION_FILE,
     extract_json_from_response,
+    get_functions,
     get_input_prompts,
     get_tool_list,
     write_output_to_file,
@@ -67,7 +68,11 @@ def main() -> None:
     try:
         vocab, merge_ranks = initialize_tokenizer(tokenizer_path, merges_path)
         outputs = []
+        # tool prompt for create_prompt
         tools = get_tool_list(tools_file=args.functions_definition)
+
+        # Load validated FunctionDefinition objects for JSON extraction
+        functions = get_functions(tools_file=args.functions_definition)
 
         # Reverse the vocab dict for ID to token lookup
         id_to_token = {v: k for k, v in vocab.items()}
@@ -85,9 +90,9 @@ def main() -> None:
             result = extract_json_from_response(
                 user_prompt,
                 llm_output,
-                tools_file=args.functions_definition,
+                functions=functions,
             )
-            print(result)
+            print(f"\n{result}")
             outputs.append(result)
 
         write_output_to_file(outputs, output_file=args.output)

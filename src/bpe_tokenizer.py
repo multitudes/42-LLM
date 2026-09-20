@@ -8,9 +8,6 @@ from pathlib import Path
 from typing import Any, cast
 
 MAX_TOKENS = 92
-# SPECIAL_TOKENS = ["<|im_start|>", "<|im_end|>", "<think>", "</think>"]
-END_TOKEN_ID1 = 3417
-END_TOKEN_ID2 = 30975
 EXPECTED_MERGE_TOKENS = 2
 
 SPECIAL_TOKENS = {
@@ -61,7 +58,8 @@ def initialize_tokenizer(
     mapping.
 
     Args:
-        vocab_path: Path to the vocabulary JSON file.
+        tokenizer_path: Path to the vocabulary JSON file.
+        merges_path: Path to the BPE merges text file.
 
     Returns:
         A tuple containing:
@@ -70,7 +68,7 @@ def initialize_tokenizer(
 
     Raises:
         RuntimeError: If loading or parsing the vocabulary or merges file
-        fails.
+            fails.
 
     """
     # Load vocabulary JSON
@@ -103,7 +101,8 @@ def initialize_tokenizer(
                 if line.strip() and not line.startswith("#")
             ]
         merge_ranks: dict[tuple[str, str], int] = {
-            (m[0], m[1]): i for i, m in enumerate(merges)
+            (m[0], m[1]): i
+            for i, m in enumerate(merges)
             if len(m) == EXPECTED_MERGE_TOKENS
         }
     except (FileNotFoundError, OSError, IndexError) as e:
@@ -168,8 +167,6 @@ def bpe_tokenize(
     if SPECIAL_TOKENS:
         pattern = f"({'|'.join(re.escape(tok) for tok in SPECIAL_TOKENS)})"
         parts = [p for p in re.split(pattern, text) if p]
-    else:
-        parts = [text]
 
     tokens: list[str] = []
     for part in parts:
@@ -194,20 +191,53 @@ def bpe_tokenize(
         new_tokens: list[str] = []
         i = 0
         while i < len(tokens):
-            if i < len(tokens) - 1 and (tokens[i], tokens[i + 1]) == best_pair:
+            if (
+                i < len(tokens) - 1
+                and (tokens[i], tokens[i + 1]) == best_pair
+            ):
                 new_tokens.append(tokens[i] + tokens[i + 1])
                 i += 2
             else:
                 new_tokens.append(tokens[i])
                 i += 1
         tokens = new_tokens
-    # retrieves the ID for unknown tokens as fallback
+
+    # Retrieves the ID for unknown tokens as fallback
     unk_id = vocab.get("<unk>")
-    # this is to avoid dropping unknown tokens
+    # Avoid dropping unknown tokens
     if unk_id is not None:
         return [vocab.get(token, unk_id) for token in tokens]
 
     return [vocab[token] for token in tokens if token in vocab]
+
+
+def gpt2_bytes_to_unicode() -> dict[int, str]:
+    """
+    Returns the standard GPT-2 / Qwen byte-to-unicode character map.
+
+    Returns:
+        Dictionary mapping byte values to Unicode character strings.
+
+    """
+    bs = (
+        list(range(ord("!"), ord("~") + 1))
+        + list(range(ord("¡"), ord("¬") + 1))
+        + list(range(ord("®"), ord("ÿ") + 1))
+    )
+    cs = bs[:]
+    n = 0
+    for b in range(2**8):
+        if b not in bs:
+            bs.append(b)
+            cs.append(2**8 + n)
+            n += 1
+    return dict(zip(bs, [chr(n) for n in cs]))
+
+
+# Inverted mapping: Unicode Symbol -> Raw Byte (0-255)
+UNICODE_TO_BYTE: dict[str, int] = {
+    v: k for k, v in gpt2_bytes_to_unicode().items()
+}
 
 
 def custom_decode(
@@ -215,33 +245,42 @@ def custom_decode(
     id_to_token: dict[int, str],
 ) -> str:
     """
-    Converts a sequence of token IDs back into a decoded text string.
-
-    Filters out special token IDs defined in `SPECIAL_TOKENS`
-    (such as think tags), replaces missing tokens with `<unk>`,
-    and converts byte-level BPE whitespace markers back to standard
-    spaces and line breaks.
+    Decodes a list of token IDs back into a UTF-8 text string.
 
     Args:
-        ids: List of token IDs to decode.
-        id_to_token: Mapping of token IDs to their corresponding token strings.
+        ids: List of integer token IDs to decode.
+        id_to_token: Mapping of token IDs to string tokens.
 
     Returns:
-        The decoded string representation.
+        The decoded UTF-8 string representation.
 
     """
-    tokens = [id_to_token.get(i, "<unk>") for i in ids]
+    tokens = [id_to_token.get(i, "") for i in ids]
+    text_symbolic = "".join(tokens)
 
-    text = "".join(tokens)
-    print(f"\n\norig response: {text}\n")
+    # Convert characters back to raw byte array
+    raw_bytes = bytearray(
+        UNICODE_TO_BYTE[char]
+        for char in text_symbolic
+        if char in UNICODE_TO_BYTE
+    )
 
-    text = text.replace("Ġ", " ").replace("Ċ", "\n").replace("ĉ", "\t")
-    return text
+    # Decode bytes as UTF-8
+    return raw_bytes.decode("utf-8", errors="replace")
 
 
 @lru_cache(maxsize=1)
 def load_control_tokens(tokenizer_path: str | Path) -> tuple[str, ...]:
-    """Loads special control tokens dynamically from a tokenizer.json file."""
+    """
+    Loads special control tokens dynamically from a tokenizer.json file.
+
+    Args:
+        tokenizer_path: Path to the tokenizer JSON file.
+
+    Returns:
+        Tuple of control token strings loaded from the file.
+
+    """
     path = Path(tokenizer_path)
     if not path.is_file():
         print(f"Warning: Tokenizer file not found at {path}")
@@ -253,7 +292,7 @@ def load_control_tokens(tokenizer_path: str | Path) -> tuple[str, ...]:
 
         added_tokens = data.get("added_tokens", [])
 
-        # Extract tokens marked as special (e.g. <|im_start|>, <|im_end|>
+        # Extract tokens marked as special (e.g. <|im_start|>, <|im_end|>)
         # or custom structural formatting markers
         control_tokens = [
             token["content"]
@@ -272,7 +311,16 @@ def load_control_tokens(tokenizer_path: str | Path) -> tuple[str, ...]:
 
 
 def sanitize_input(text: str) -> str:
-    """Strips control tokens from user input to prevent prompt injection."""
+    """
+    Strips control tokens from user input to prevent prompt injection.
+
+    Args:
+        text: Raw input text string.
+
+    Returns:
+        Sanitized text string with special control tokens removed.
+
+    """
     sanitized = text
     for token in SPECIAL_TOKENS:
         sanitized = sanitized.replace(token, "")
@@ -298,9 +346,9 @@ def create_prompt(user_input: str, tools: str) -> str:
         "Based on the user's request, you must call the "
         "appropriate tool with the correct arguments by wrapping the JSON "
         "in <tool_call> tags.\n\n"
-        "When constructing regular expressions, use character sets like [aeiou]"
-        "for matching specific characters, \\d+ for digits, and \\b for word "
-        "boundaries.\n\n"
+        "When constructing regular expressions, use character sets like "
+        "[aeiou] for matching specific characters, \\d+ for digits, "
+        "and \\b for word boundaries.\n\n"
         f"You have access to the following tools:\n{tools}\n\n"
         "---\n"
         "Here are some examples:\n\n"
@@ -360,20 +408,23 @@ def get_answer_ids(
         List of generated answer token IDs.
 
     """
+    # Isolate context growth to a local list to prevent caller side-effects
+    working_ids: list[int] = list(input_ids)
     answer_ids: list[int] = []
 
     for _ in range(MAX_TOKENS):
         print(".", end="", flush=True)
+
         # The logits vector returned by the model is a
         # list equal to the size of the model's vocabulary
-        logits = llm.get_logits_from_input_ids(input_ids)
+        logits = llm.get_logits_from_input_ids(working_ids)
 
         # Get token index with the highest logit
         # could use numpy argmax but the llm class returns a python list,
         # so we use max with enumerate
         next_token_id = max(enumerate(logits), key=lambda x: x[1])[0]
 
-        input_ids.append(next_token_id)
+        working_ids.append(next_token_id)
         answer_ids.append(next_token_id)
 
         if next_token_id in STOP_TOKEN_IDS:

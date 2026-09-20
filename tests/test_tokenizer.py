@@ -134,7 +134,7 @@ def test_extract_json_missing_required_parameter(
     response = '{"name": "fn_add_numbers", "parameters": {"a": 5}}'
 
     # 4. Execute
-    result = extract_json_from_response(prompt, response)
+    result = extract_json_from_response(prompt, response, functions=[])
 
     # 5. Assert fallback to empty SelectedFunction
     assert result.name == ""

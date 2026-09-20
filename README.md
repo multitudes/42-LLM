@@ -179,18 +179,18 @@ For deep dives into specific sub-components of the project, check the dedicated 
 
 | Topic / Module | Description & Link |
 | --- | --- |
-| **BPE Tokenization** | Custom Byte Pair Encoding implementation and subword splitting → [`docs/bpe.md`](https://www.google.com/search?q=docs/bpe.md) |
-| **BPE Pair Merges** | Step-by-step token pair rank evaluation and merging → [`docs/merge.md`](https://www.google.com/search?q=docs/merge.md) |
-| **Prompt Engineering** | ChatML control tokens, JSON output formatting, and `/no_think` usage → [`docs/prompting_json.md`](https://www.google.com/search?q=docs/prompting_json.md) |
-| **Prompt Examples** | Concrete tool-calling input/output execution samples → [`docs/example-prompts.md`](https://www.google.com/search?q=docs/example-prompts.md) |
-| **LLM SDK** | Integration guidelines and constraints for the `llm_sdk` runtime → [`docs/llm_sdk.md`](https://www.google.com/search?q=docs/llm_sdk.md) |
-| **Ollama vs Local SDK** | Architectural comparison between standalone daemons and embedded runtime → [`docs/ollama.md`](https://www.google.com/search?q=docs/ollama.md) |
-| **Pydantic Validation** | Data models, type checking, and schema enforcement → [`docs/pydantic.md`](https://www.google.com/search?q=docs/pydantic.md) |
-| **Environment Management** | Virtual environment isolation and synchronization using `uv` → [`docs/uv.md`](https://www.google.com/search?q=docs/uv.md) |
-| **Dependency Management** | Approved Python packages (`numpy`, `pydantic`) and forbidden tools → [`docs/packages.md`](https://www.google.com/search?q=docs/packages.md) |
-| **Generation Logs** | Understanding HuggingFace model startup output and token IDs → [`docs/hugginface.md`](https://www.google.com/search?q=docs/hugginface.md) |
-| **Debugging** | Interactive troubleshooting using `breakpoint()` and Python's `pdb` → [`docs/python-debugger.md`](https://www.google.com/search?q=docs/python-debugger.md) |
-| **Developer Hints** | Useful tips for exception handling, linting, and resource management → [`docs/hints.md`](https://www.google.com/search?q=docs/hints.md) |
+| **BPE Tokenization** | Custom Byte Pair Encoding implementation and subword splitting → [`docs/bpe.md`](docs/bpe.md) |
+| **BPE Pair Merges** | Step-by-step token pair rank evaluation and merging → [`docs/merge.md`](docs/merge.md) |
+| **Prompt Engineering** | ChatML control tokens, JSON output formatting, and special tokens usage → [`docs/prompting_json.md`](docs/prompting_json.md) |
+| **Prompt Examples** | Concrete tool-calling input/output execution samples → [`docs/example-prompts.md`](docs/example-prompts.md) |
+| **LLM SDK** | Integration guidelines and constraints for the `llm_sdk` runtime → [`docs/llm_sdk.md`](docs/llm_sdk.md) |
+| **Ollama vs Local SDK** | Architectural comparison between standalone daemons and embedded runtime → [`docs/ollama.md`](docs/ollama.md) |
+| **Pydantic Validation** | Data models, type checking, and schema enforcement → [`docs/pydantic.md`](docs/pydantic.md) |
+| **Environment Management** | Virtual environment isolation and synchronization using `uv` → [`docs/uv.md`](docs/uv.md) |
+| **Dependency Management** | Approved Python packages (`numpy`, `pydantic`) and forbidden tools → [`docs/packages.md`](docs/packages.md) |
+| **Generation Logs** | Understanding HuggingFace model startup output and token IDs → [`docs/hugginface.md`](docs/hugginface.md) |
+| **Debugging** | Interactive troubleshooting using `breakpoint()` and Python's `pdb` → [`docs/python-debugger.md`](docs/python-debugger.md) |
+| **Developer Hints** | Useful tips for exception handling, linting, and resource management → [`docs/hints.md`](docs/hints.md) |
 
 ---
 
