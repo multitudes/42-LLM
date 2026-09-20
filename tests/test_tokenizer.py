@@ -1,3 +1,6 @@
+from typing import Any
+from src.schemas import FunctionDefinition
+import pytest
 from pathlib import Path
 
 from llm_sdk import Small_LLM_Model
@@ -24,16 +27,16 @@ def test_tokenizer_initialization() -> None:
 
 def test_extract_json_valid() -> None:
     """Verify JSON extraction handles valid tool calls."""
-    prompt = "Multiply 5 and 3"
-    response = ('Here is the call: {"name": "multiply", '
-                '"parameters": {"a": 5, "b": 3}}'
+    prompt = "Add 5 and 3"
+    response = ('Here is the call: {"name": "fn_add_numbers", '
+                '"parameters": {"a": 5.0, "b": 3.0}}'
                 )
 
     result = extract_json_from_response(prompt, response)
 
     assert isinstance(result, SelectedFunction)
-    assert result.name == "multiply"
-    assert result.parameters["a"] == 5
+    assert result.name == "fn_add_numbers"
+    assert result.parameters["a"] == 5.0
 
 
 def test_extract_json_missing() -> None:
@@ -84,3 +87,40 @@ def test_bpe_tokenize_without_unk_in_vocab() -> None:
 
     # Should safely drop missing tokens if <unk> is absent in vocab
     assert token_ids == [1, 2, 3]
+
+
+def test_extract_json_missing_required_parameter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify that extract_json_from_response returns an empty SelectedFunction when a required parameter is missing."""
+
+    # 1. Mock tool schema requiring both 'a' and 'b'
+    mock_functions = [
+        FunctionDefinition.model_validate({
+            "name": "fn_add",
+            "description": "Add two numbers",
+            "parameters": {
+                "a": {"type": "integer"},
+                "b": {"type": "integer"},
+            },
+            "returns": {"type": "integer"},
+        })
+    ]
+
+    # 2. Patch get_functions where defined
+    monkeypatch.setattr(
+        "src.utils.get_functions",
+        lambda *args, **kwargs: mock_functions,
+    )
+
+    # 3. Model output providing 'a' but omitting required 'b'
+    prompt = "Add 5 and 10"
+    response = '{"name": "fn_add_numbers", "parameters": {"a": 5}}'
+
+    # 4. Execute
+    result = extract_json_from_response(prompt, response)
+
+    # 5. Assert fallback to empty SelectedFunction
+    assert result.name == ""
+    assert result.parameters == {}
+    assert result.prompt == prompt

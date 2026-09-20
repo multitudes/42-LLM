@@ -151,6 +151,7 @@ def enforce_arg_types(
 
 # raw_decode reads token-by-token according to JSON spec.
 def extract_first_json_string(text: str) -> str | None:
+    """Extract the first valid balanced JSON object string"""
     decoder = json.JSONDecoder()
     pos = 0
     while pos < len(text):
@@ -182,7 +183,6 @@ def extract_json_from_response(
         .strip()
     )
 
-    # Extract the first valid balanced JSON object string
     json_str = extract_first_json_string(clean_output)
 
     if not json_str:
@@ -200,17 +200,29 @@ def extract_json_from_response(
         if not name:
             return SelectedFunction(prompt=prompt, name="", parameters={})
 
-        parameters = (
-            parsed_fn.parameters if isinstance(
-                parsed_fn.parameters, dict) else {}
-        )
+        # Load available tool definitions and validate the tool name exists
+        functions_def = get_functions(tools_file=tools_file)
+        target_fn = next((fn for fn in functions_def if fn.name == name), None)
+        if not target_fn:
+            print(
+                f"Tool name '{name}' not found in tool definitions.")
+            return SelectedFunction(prompt=prompt, name="", parameters={})
+
+        parameters = parsed_fn.parameters
+
+        # Ensure all required keys defined in target_fn.parameters are present
+        required_keys = set(parsed_fn.parameters.keys())
+        provided_keys = set(parameters.keys())
+
+        if not required_keys.issubset(provided_keys):
+            missing = required_keys - provided_keys
+            print(f"Tool call '{name}' missing required parameters: {missing}")
+            return SelectedFunction(prompt=prompt, name="", parameters={})
 
         # validate against the function definitions and enforce types
         # example the model might return a string for a number, like "11.0"
         # we want to convert it to a float
-        functions_def = get_functions(tools_file=tools_file)
         functions_def_dicts = [fn.model_dump() for fn in functions_def]
-
         parameters = enforce_arg_types(name, parameters, functions_def_dicts)
 
         return SelectedFunction(prompt=prompt, name=name, parameters=parameters)
