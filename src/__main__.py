@@ -92,8 +92,13 @@ def main() -> None:
 
         write_output_to_file(outputs, output_file=args.output)
 
-    except RuntimeError as e:
-        print(f"Fatal error: {e}")
+    except (RuntimeError, TypeError, ValueError, FileNotFoundError) as e:
+        print(f"Pipeline Execution Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    except Exception as e:
+        # Catch-all for unexpected model/CUDA/system errors
+        print(f"Unexpected Fatal Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 
