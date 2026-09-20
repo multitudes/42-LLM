@@ -63,30 +63,6 @@ def test_tokenizer_initialization_fast(
     assert merge_ranks is not None
 
 
-def test_extract_json_valid() -> None:
-    """Verify JSON extraction handles valid tool calls."""
-    prompt = "Add 5 and 3"
-    response = ('Here is the call: {"name": "fn_add_numbers", '
-                '"parameters": {"a": 5.0, "b": 3.0}}'
-                )
-
-    result = extract_json_from_response(prompt, response)
-
-    assert isinstance(result, SelectedFunction)
-    assert result.name == "fn_add_numbers"
-    assert result.parameters["a"] == 5.0
-
-
-def test_extract_json_missing() -> None:
-    """Verify JSON extraction handles malformed output gracefully."""
-    prompt = "Hello"
-    response = "I cannot help with that."
-
-    result = extract_json_from_response(prompt, response)
-
-    assert result.name == ""
-
-
 def test_bpe_tokenize_unknown_tokens_mapped_to_unk() -> None:
     # Setup vocabulary containing <unk> (ID 0) and a few known characters
     vocab = {
@@ -127,6 +103,9 @@ def test_bpe_tokenize_without_unk_in_vocab() -> None:
     assert token_ids == [1, 2, 3]
 
 
+<< << << < HEAD
+
+
 def test_extract_json_missing_required_parameter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -165,3 +144,7 @@ def test_extract_json_missing_required_parameter(
     assert result.name == ""
     assert result.parameters == {}
     assert result.prompt == prompt
+
+
+== == == =
+>>>>>> > 2503846 (FIX reorganize imports and duplicated json test function consolidated in test_utils.py)

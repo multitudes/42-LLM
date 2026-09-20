@@ -16,6 +16,110 @@ from src.utils import (
 )
 
 
+def test_extract_json_missing_required_parameter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Verify that extract_json_from_response returns an empty SelectedFunction
+    when a required parameter is missing.
+    """
+
+    # 1. Mock tool schema requiring both 'a' and 'b'
+    mock_functions = [
+        FunctionDefinition.model_validate({
+            "name": "fn_add",
+            "description": "Add two numbers",
+            "parameters": {
+                "a": {"type": "integer"},
+                "b": {"type": "integer"},
+            },
+            "returns": {"type": "integer"},
+        })
+    ]
+
+    # 2. Patch get_functions where defined
+    monkeypatch.setattr(
+        "src.utils.get_functions",
+        lambda *args, **kwargs: mock_functions,
+    )
+
+    # 3. Model output providing 'a' but omitting required 'b'
+    prompt = "Add 5 and 10"
+    response = '{"name": "fn_add_numbers", "parameters": {"a": 5}}'
+
+    # 4. Execute
+    result = extract_json_from_response(prompt, response)
+
+    # 5. Assert fallback to empty SelectedFunction
+    assert result.name == ""
+    assert result.parameters == {}
+    assert result.prompt == prompt
+
+
+def test_extract_json_valid() -> None:
+    """Verify JSON extraction handles valid tool calls."""
+    prompt = "Add 5 and 3"
+    response = ('Here is the call: {"name": "fn_add_numbers", '
+                '"parameters": {"a": 5.0, "b": 3.0}}'
+                )
+
+    result = extract_json_from_response(prompt, response)
+
+    assert isinstance(result, SelectedFunction)
+    assert result.name == "fn_add_numbers"
+    assert result.parameters["a"] == 5.0
+
+
+def test_extract_json_from_response_with_think(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify JSON extraction successfully strips think blocks"""
+    monkeypatch.setattr(
+        "src.utils.get_functions",
+        lambda *args, **kwargs: [
+            FunctionDefinition.model_validate({
+                "name": "multiply",
+                "description": "Multiply numbers",
+                "parameters": {
+                    "a": {"type": "number"},
+                    "b": {"type": "number"}},
+                "returns": {"type": "number"},
+            })
+        ],
+    )
+
+    prompt = "Multiply numbers"
+    response = (
+        "</think>\n"
+        'Here is your answer: '
+        '{"name": "multiply", "parameters": {"a": 2, "b": 4}}'
+    )
+
+    result = extract_json_from_response(prompt, response)
+    assert isinstance(result, SelectedFunction)
+    assert result.name == "multiply"
+    assert result.parameters["a"] == 2.0
+
+
+def test_extract_json_from_response_invalid() -> None:
+    """Verify extraction falls back to empty SelectedFunction."""
+    prompt = "Hello"
+    response = "I cannot fulfill this request."
+    result = extract_json_from_response(prompt, response)
+    assert result.name == ""
+    assert result.parameters == {}
+
+
+def test_extract_json_missing() -> None:
+    """Verify JSON extraction handles malformed output gracefully."""
+    prompt = "Hello"
+    response = "I cannot help with that."
+
+    result = extract_json_from_response(prompt, response)
+
+    assert result.name == ""
+
+
 def test_get_functions_success(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -77,46 +181,6 @@ def test_enforce_arg_types() -> None:
     assert cleaned["b"] == 5
     assert isinstance(cleaned["b"], int)
     assert cleaned["name"] == "123"
-
-
-def test_extract_json_from_response_with_think(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Verify JSON extraction successfully strips think blocks"""
-    monkeypatch.setattr(
-        "src.utils.get_functions",
-        lambda *args, **kwargs: [
-            FunctionDefinition.model_validate({
-                "name": "multiply",
-                "description": "Multiply numbers",
-                "parameters": {
-                    "a": {"type": "number"},
-                    "b": {"type": "number"}},
-                "returns": {"type": "number"},
-            })
-        ],
-    )
-
-    prompt = "Multiply numbers"
-    response = (
-        "</think>\n"
-        'Here is your answer: '
-        '{"name": "multiply", "parameters": {"a": 2, "b": 4}}'
-    )
-
-    result = extract_json_from_response(prompt, response)
-    assert isinstance(result, SelectedFunction)
-    assert result.name == "multiply"
-    assert result.parameters["a"] == 2.0
-
-
-def test_extract_json_from_response_invalid() -> None:
-    """Verify extraction falls back to empty SelectedFunction."""
-    prompt = "Hello"
-    response = "I cannot fulfill this request."
-    result = extract_json_from_response(prompt, response)
-    assert result.name == ""
-    assert result.parameters == {}
 
 
 def test_write_output_to_file(
