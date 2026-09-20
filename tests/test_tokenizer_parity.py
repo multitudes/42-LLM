@@ -1,5 +1,5 @@
-import json
 from collections.abc import Iterator
+import json
 from pathlib import Path
 from typing import Any, cast
 

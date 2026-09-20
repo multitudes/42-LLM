@@ -1,9 +1,4 @@
-Here is the updated `README.md` fully restructured to meet all the newly specified subject requirements while incorporating your existing project details, CLI usage, and prompt engineering lessons.
-
----
-
-```markdown
-*This project has been created as part of the 42 curriculum by <login1>.*
+This project has been created as part of the 42 curriculum by lbrusa.
 
 # 42-LLM: Local Tool-Calling LLM System
 
@@ -33,21 +28,6 @@ The core goal is to enable structural tool invocation natively within Python wit
 2. Synchronize project dependencies:
 ```bash
 uv sync
-
-```
-
-
-
-### Execution
-
-Run the application as a module using `uv`:
-
-```bash
-# Run with default file locations
-uv run python -m src
-
-# Run with custom input, output, and function definition paths
-uv run python -m src --functions_definition data/input/functions_definition.json --input data/input/function_calling_tests.json --output data/output/function_calling_name.json
 
 ```
 
@@ -85,6 +65,16 @@ And a test prompt JSON file (`data/input/function_calling_tests.json`):
 ]
 
 ```
+Run the application as a module using `uv`:
+
+```bash
+# Run with default file locations
+uv run python -m src
+
+# Run with custom input, output, and function definition paths
+uv run python -m src --functions_definition data/input/functions_definition.json --input data/input/function_calling_tests.json --output data/output/function_calling_name.json
+
+```
 
 Executing the command generates the structured function call output (`data/output/function_calling_name.json`):
 
@@ -100,6 +90,7 @@ Executing the command generates the structured function call output (`data/outpu
 ]
 
 ```
+
 
 ---
 
