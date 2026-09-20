@@ -218,6 +218,14 @@ def custom_decode(
     return text
 
 
+def sanitize_input(text: str) -> str:
+    """Strips ChatML control tokens from user-supplied text to prevent prompt injection."""
+    sanitized = text
+    for token in SPECIAL_TOKENS:
+        sanitized = sanitized.replace(token, "")
+    return sanitized
+
+
 def create_prompt(user_input: str, tools: str) -> str:
     """
     Creates the prompt for the LLM based on user input and available tools.
@@ -230,6 +238,8 @@ def create_prompt(user_input: str, tools: str) -> str:
         Formatted chat prompt string ready for inference.
 
     """
+    safe_user_input = sanitize_input(user_input)
+
     system_msg = (
         "You are a helpful assistant that uses tools. "
         "Based on the user's request, you must call the "
@@ -269,7 +279,7 @@ def create_prompt(user_input: str, tools: str) -> str:
 
     return (
         f"<|im_start|>system\n{system_msg}<|im_end|>\n"
-        f"<|im_start|>user\n{user_input}<|im_end|>\n"
+        f"<|im_start|>user\n{safe_user_input}<|im_end|>\n"
         # Notice we end by pre-filling the exact start of the tool call
         # This completely bypasses the model's desire to output <think>
         f"<|im_start|>assistant\n<tool_call>\n"
