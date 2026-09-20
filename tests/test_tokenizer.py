@@ -46,7 +46,7 @@ def test_extract_json_missing() -> None:
     assert result.name == ""
 
 
-def test_bpe_tokenize_unknown_tokens_mapped_to_unk():
+def test_bpe_tokenize_unknown_tokens_mapped_to_unk() -> None:
     # Setup vocabulary containing <unk> (ID 0) and a few known characters
     vocab = {
         "<unk>": 0,
@@ -54,7 +54,7 @@ def test_bpe_tokenize_unknown_tokens_mapped_to_unk():
         "a": 2,
         "t": 3,
     }
-    merge_ranks = {}
+    merge_ranks: dict[tuple[str, str], int] = {}
 
     # "cat" consists of known tokens [1, 2, 3]
     # "dog" consists of unknown characters ('d', 'o', 'g')
@@ -74,10 +74,10 @@ def test_bpe_tokenize_unknown_tokens_mapped_to_unk():
     assert token_ids[3:] == [0, 0, 0, 0]
 
 
-def test_bpe_tokenize_without_unk_in_vocab():
+def test_bpe_tokenize_without_unk_in_vocab() -> None:
     # Fallback sanity check when <unk> is missing from vocab
     vocab = {"c": 1, "a": 2, "t": 3}
-    merge_ranks = {}
+    merge_ranks: dict[tuple[str, str], int] = {}
 
     input_text = "cat dog"
     token_ids = bpe_tokenize(input_text, vocab, merge_ranks)

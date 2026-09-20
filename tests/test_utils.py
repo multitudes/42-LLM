@@ -89,7 +89,9 @@ def test_extract_json_from_response_with_think(
             FunctionDefinition.model_validate({
                 "name": "multiply",
                 "description": "Multiply numbers",
-                "parameters": {"a": {"type": "number"}, "b": {"type": "number"}},
+                "parameters": {
+                    "a": {"type": "number"},
+                    "b": {"type": "number"}},
                 "returns": {"type": "number"},
             })
         ],
@@ -98,7 +100,8 @@ def test_extract_json_from_response_with_think(
     prompt = "Multiply numbers"
     response = (
         "</think>\n"
-        'Here is your answer: {"name": "multiply", "parameters": {"a": 2, "b": 4}}'
+        'Here is your answer: '
+        '{"name": "multiply", "parameters": {"a": 2, "b": 4}}'
     )
 
     result = extract_json_from_response(prompt, response)
@@ -108,7 +111,7 @@ def test_extract_json_from_response_with_think(
 
 
 def test_extract_json_from_response_invalid() -> None:
-    """Verify extraction falls back to empty SelectedFunction on malformed text."""
+    """Verify extraction falls back to empty SelectedFunction."""
     prompt = "Hello"
     response = "I cannot fulfill this request."
     result = extract_json_from_response(prompt, response)

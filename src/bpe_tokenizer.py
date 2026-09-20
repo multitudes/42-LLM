@@ -253,7 +253,6 @@ def create_prompt(user_input: str, tools: str) -> str:
         "</tool_call>\n"
         "User: Substitute the digits in the string "
         "'Hello 34 I'm 233 years old' with 'NUMBERS'\n"
-        "</tool_call>\n"
         "Assistant: <tool_call>\n"
         '{"name": "fn_substitute_string_with_regex", '
         '"parameters": {"source_string": "Hello 34 I\'m 233 years old", '
