@@ -1,94 +1,112 @@
-# Using `uv` with Python Projects
+# Package Management with `uv`
 
-`uv` is a fast Python package manager and virtual environment tool. In this project, you are required to use `uv` for dependency management and running your code.
+I use `uv` as the fast package manager and virtual environment manager for this project to guarantee fast, deterministic, and reproducible builds.
 
-## Setting Up Your Environment
+## Setup & Environment Initialization
 
-1. **Install `uv`** (if not already installed):
+1. **Install `uv**`:
+
 ```zsh
 curl -LsSf https://astral.sh/uv/install.sh | sh
-# or
-pipx install uv
-# or
-pip install uv
+
 ```
 
-2. **Initialize a new uv project** (modern approach):
+2. **Initialize the project structure**:
+
 ```zsh
 uv init
-```
-This creates a `pyproject.toml` file for dependency management.
 
-3. **Add dependencies:**
+```
+
+3. **Add production and development dependencies**:
+
 ```zsh
-uv add torch transformers huggingface-hub
-uv add --dev flake8  # for development dependencies
+uv add torch transformers huggingface-hub pydantic numpy
+uv add --dev ruff mypy pytest
+
 ```
 
-4. **Install/sync dependencies:**
+4. **Sync the virtual environment**:
+
 ```zsh
 uv sync
+
 ```
-This installs all dependencies from `pyproject.toml` and creates/updates `uv.lock`.
 
-## Running Your Project
+This builds my local `.venv/` and generates an updated `uv.lock` file to lock all transitive dependencies.
 
-To run your main script as required by the project:
+## Execution
+
+To run my project's main entry point without needing to manually activate the virtual environment:
 
 ```zsh
 uv run python -m src
+
 ```
 
-This command will:
-- Automatically use the correct Python interpreter and virtual environment
-- Run the `src` module as the entry point
-- No need to manually activate the virtual environment
+Using `uv run` ensures the script uses the project's dedicated isolated interpreter and all pinned packages automatically.
 
-## Common `uv` Commands
+## Core Workflow Commands
 
-- **Add a package:**
+* **Add a runtime package:**
+
 ```zsh
 uv add <package>
+
 ```
-- **Add development dependency:**
+
+* **Add a dev tool:**
+
 ```zsh
 uv add --dev <package>
+
 ```
-- **Remove a package:**
+
+* **Remove a dependency:**
+
 ```zsh
 uv remove <package>
+
 ```
-- **List installed packages:**
+
+* **Inspect installed dependency tree:**
+
 ```zsh
 uv tree
+
 ```
-- **Run scripts:**
+
+* **Run project tools and tests:**
+
 ```zsh
-uv run python <script.py>
+uv run pytest
+uv run mypy .
+uv run ruff check --fix .
+
 ```
-- **Sync dependencies:**
+
+* **Synchronize state:**
+
 ```zsh
 uv sync
+
 ```
 
-## Project Structure
+## Project File Structure
 
-With modern `uv`, your project uses:
-- `pyproject.toml` - Project configuration and dependencies
-- `uv.lock` - Locked dependency versions for reproducibility
-- `.venv/` - Virtual environment (auto-created)
+My project relies on modern Python packaging tools rather than a legacy `requirements.txt`:
 
-No `requirements.txt` file is needed.
+* `pyproject.toml` — Standard project configuration, metadata, and dependency definitions.
+* `uv.lock` — Cross-platform lockfile enforcing exact version parity across machines.
+* `.venv/` — Automatically managed virtual environment directory.
 
-## Notes
-- `uv run` automatically manages the virtual environment - no manual activation needed
-- The `uv.lock` file ensures reproducible builds across different machines
-- For this project, all classes must use `pydantic` for validation, and you may use `numpy` and `json`
-- Do **not** use forbidden packages (see README for details)
+## Implementation Notes
+
+* I never manually activate `.venv/` — `uv run` handles virtual environment isolation and context execution dynamically.
+* The `uv.lock` file ensures my project builds identically across different environments.
+* All data schemas and tool parameters in my pipeline use `pydantic` for runtime validation.
 
 ## References
-- [uv documentation](https://docs.astral.sh/uv/)
-- [pyproject.toml specification](https://packaging.python.org/en/latest/specifications/pyproject-toml/)
 
----
-This guide explains how to use modern `uv` for Python projects as required by the 42-LLM-test project.
+* [uv Documentation](https://docs.astral.sh/uv/)
+* [pyproject.toml Specification](https://packaging.python.org/en/latest/specifications/pyproject-toml/)
