@@ -13,7 +13,7 @@ The core goal is to enable structural tool invocation natively within Python wit
 ## Instructions
 
 ### System Requirements
-* **Python Version:** 3.11 or later
+* **Python Version:** 3.12 or later
 * **Package Manager:** [`uv`](https://docs.astral.sh/uv/) for deterministic environment synchronization
 * **Coding Standards:** PEP 8 compliance verified via `flake8`
 
