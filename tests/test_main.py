@@ -33,7 +33,6 @@ def test_main_exits_with_code_1_on_unexpected_runtime_error(
     def mock_pipeline_failure(*args: Any, **kwargs: Any) -> Any:
         raise RuntimeError("CUDA out of memory or pipeline failure.")
 
-    # Patch pipeline runner (adjust target module path if defined in src.bpe_tokenizer)
     monkeypatch.setattr("src.utils.write_output_to_file", mock_pipeline_failure)
 
     with pytest.raises(SystemExit) as exc_info:
