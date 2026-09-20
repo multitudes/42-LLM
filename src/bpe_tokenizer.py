@@ -1,9 +1,8 @@
 # src/bpe_tokenizer.py
+import json
+import re
 from functools import lru_cache
 from itertools import pairwise
-import re
-import json
-
 from pathlib import Path
 from typing import Any, cast
 
