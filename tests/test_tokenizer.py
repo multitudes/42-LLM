@@ -52,7 +52,9 @@ def test_bpe_tokenize_unknown_tokens_mapped_to_unk() -> None:
 
 
 def test_bpe_tokenize_without_unk_uses_endoftext_fallback() -> None:
-    """When <unk> is absent, unknown pieces map to <|endoftext|> (never drop)."""
+    """
+    When <unk> is absent, unknown pieces map to <|endoftext|> (never drop).
+    """
     vocab = {
         "<|endoftext|>": 151643,
         "c": 1,
