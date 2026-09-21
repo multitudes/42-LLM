@@ -1,9 +1,7 @@
 # src/bpe_tokenizer.py
-from functools import lru_cache
-from itertools import pairwise
-import re
 import json
-
+import re
+from itertools import pairwise
 from pathlib import Path
 from typing import Any, cast
 
@@ -76,18 +74,17 @@ def initialize_tokenizer(
         with tokenizer_path.open("r", encoding="utf-8") as f:
             raw_data = json.load(f)
 
-            # Check if it's a nested HuggingFace tokenizer.json format
-            if "model" in raw_data and "vocab" in raw_data["model"]:
-                vocab = cast("dict[str, int]", raw_data["model"]["vocab"])
-            else:
-                # Fallback assuming it's already a flat dictionary
-                vocab = cast("dict[str, int]", raw_data)
+        vocab = cast("dict[str, int]", raw_data["model"]["vocab"])
 
-    except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
+    except (FileNotFoundError,
+            json.JSONDecodeError,
+            KeyError,
+            TypeError,
+            OSError) as e:
         msg = f"Error loading vocabulary from {tokenizer_path}: {e}"
         raise RuntimeError(msg) from e
 
-    # Ensure special tokens are included
+    # Ensure special tokens are included in the vocab
     for tok, tid in SPECIAL_TOKENS.items():
         if tok not in vocab:
             vocab[tok] = tid
@@ -164,9 +161,8 @@ def bpe_tokenize(
         List of mapped integer token IDs.
 
     """
-    if SPECIAL_TOKENS:
-        pattern = f"({'|'.join(re.escape(tok) for tok in SPECIAL_TOKENS)})"
-        parts = [p for p in re.split(pattern, text) if p]
+    pattern = f"({'|'.join(re.escape(tok) for tok in SPECIAL_TOKENS)})"
+    parts = [p for p in re.split(pattern, text) if p]
 
     tokens: list[str] = []
     for part in parts:
@@ -211,103 +207,127 @@ def bpe_tokenize(
     return [vocab[token] for token in tokens if token in vocab]
 
 
-def gpt2_bytes_to_unicode() -> dict[int, str]:
-    """
-    Returns the standard GPT-2 / Qwen byte-to-unicode character map.
-
-    Returns:
-        Dictionary mapping byte values to Unicode character strings.
-
-    """
-    bs = (
-        list(range(ord("!"), ord("~") + 1))
-        + list(range(ord("¡"), ord("¬") + 1))
-        + list(range(ord("®"), ord("ÿ") + 1))
-    )
-    cs = bs[:]
-    n = 0
-    for b in range(2**8):
-        if b not in bs:
-            bs.append(b)
-            cs.append(2**8 + n)
-            n += 1
-    return dict(zip(bs, [chr(n) for n in cs]))
-
-
-# Inverted mapping: Unicode Symbol -> Raw Byte (0-255)
-UNICODE_TO_BYTE: dict[str, int] = {
-    v: k for k, v in gpt2_bytes_to_unicode().items()
-}
-
-
 def custom_decode(
     ids: list[int],
     id_to_token: dict[int, str],
 ) -> str:
-    """
-    Decodes a list of token IDs back into a UTF-8 text string.
+    """Converts a sequence of token IDs back into a decoded text string.
+
+    Replaces byte-level BPE whitespace markers (`Ġ`, `Ċ`, `ĉ`) back to
+    standard spaces, newlines, and tabs.
 
     Args:
         ids: List of integer token IDs to decode.
-        id_to_token: Mapping of token IDs to string tokens.
+        id_to_token: Mapping of token IDs to their corresponding strings.
 
     Returns:
-        The decoded UTF-8 string representation.
+        The decoded text string representation.
 
     """
-    tokens = [id_to_token.get(i, "") for i in ids]
-    text_symbolic = "".join(tokens)
+    tokens = [id_to_token.get(i, "<unk>") for i in ids]
+    text = "".join(tokens)
 
-    # Convert characters back to raw byte array
-    raw_bytes = bytearray(
-        UNICODE_TO_BYTE[char]
-        for char in text_symbolic
-        if char in UNICODE_TO_BYTE
-    )
-
-    # Decode bytes as UTF-8
-    return raw_bytes.decode("utf-8", errors="replace")
+    # Revert BPE whitespace markers to standard formatting characters
+    return text.replace("Ġ", " ").replace("Ċ", "\n").replace("ĉ", "\t")
 
 
-@lru_cache(maxsize=1)
-def load_control_tokens(tokenizer_path: str | Path) -> tuple[str, ...]:
-    """
-    Loads special control tokens dynamically from a tokenizer.json file.
+# def gpt2_bytes_to_unicode() -> dict[int, str]:
+#     """
+#     Returns the standard GPT-2 / Qwen byte-to-unicode character map.
 
-    Args:
-        tokenizer_path: Path to the tokenizer JSON file.
+#     Returns:
+#         Dictionary mapping byte values to Unicode character strings.
 
-    Returns:
-        Tuple of control token strings loaded from the file.
+#     """
+#     bs = (
+#         list(range(ord("!"), ord("~") + 1))
+#         + list(range(ord("¡"), ord("¬") + 1))
+#         + list(range(ord("®"), ord("ÿ") + 1))
+#     )
+#     cs = bs[:]
+#     n = 0
+#     for b in range(2**8):
+#         if b not in bs:
+#             bs.append(b)
+#             cs.append(2**8 + n)
+#             n += 1
+#     return dict(zip(bs, [chr(n) for n in cs]))
 
-    """
-    path = Path(tokenizer_path)
-    if not path.is_file():
-        print(f"Warning: Tokenizer file not found at {path}")
-        return ()
 
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+# # Inverted mapping: Unicode Symbol -> Raw Byte (0-255)
+# UNICODE_TO_BYTE: dict[str, int] = {
+#     v: k for k, v in gpt2_bytes_to_unicode().items()
+# }
 
-        added_tokens = data.get("added_tokens", [])
 
-        # Extract tokens marked as special (e.g. <|im_start|>, <|im_end|>)
-        # or custom structural formatting markers
-        control_tokens = [
-            token["content"]
-            for token in added_tokens
-            if isinstance(token, dict)
-            and (
-                token.get("special", False)
-                or token["content"].startswith("<|")
-            )
-        ]
-        return tuple(control_tokens)
+# def custom_decode(
+#     ids: list[int],
+#     id_to_token: dict[int, str],
+# ) -> str:
+#     """
+#     Decodes a list of token IDs back into a UTF-8 text string.
 
-    except (json.JSONDecodeError, OSError) as e:
-        print(f"Warning: Failed to parse tokenizer file at {path}: {e}")
-        return ()
+#     Args:
+#         ids: List of integer token IDs to decode.
+#         id_to_token: Mapping of token IDs to string tokens.
+
+#     Returns:
+#         The decoded UTF-8 string representation.
+
+#     """
+#     tokens = [id_to_token.get(i, "") for i in ids]
+#     text_symbolic = "".join(tokens)
+
+#     # Convert characters back to raw byte array
+#     raw_bytes = bytearray(
+#         UNICODE_TO_BYTE[char]
+#         for char in text_symbolic
+#         if char in UNICODE_TO_BYTE
+#     )
+
+#     # Decode bytes as UTF-8
+#     return raw_bytes.decode("utf-8", errors="replace")
+
+
+# @lru_cache(maxsize=1)
+# def load_control_tokens(tokenizer_path: str | Path) -> tuple[str, ...]:
+#     """
+#     Loads special control tokens dynamically from a tokenizer.json file.
+
+#     Args:
+#         tokenizer_path: Path to the tokenizer JSON file.
+
+#     Returns:
+#         Tuple of control token strings loaded from the file.
+
+#     """
+#     path = Path(tokenizer_path)
+#     if not path.is_file():
+#         print(f"Warning: Tokenizer file not found at {path}")
+#         return ()
+
+#     try:
+#         with open(path, "r", encoding="utf-8") as f:
+#             data = json.load(f)
+
+#         added_tokens = data.get("added_tokens", [])
+
+#         # Extract tokens marked as special (e.g. <|im_start|>, <|im_end|>)
+#         # or custom structural formatting markers
+#         control_tokens = [
+#             token["content"]
+#             for token in added_tokens
+#             if isinstance(token, dict)
+#             and (
+#                 token.get("special", False)
+#                 or token["content"].startswith("<|")
+#             )
+#         ]
+#         return tuple(control_tokens)
+
+#     except (json.JSONDecodeError, OSError) as e:
+#         print(f"Warning: Failed to parse tokenizer file at {path}: {e}")
+#         return ()
 
 
 def sanitize_input(text: str) -> str:
@@ -341,6 +361,8 @@ def create_prompt(user_input: str, tools: str) -> str:
     """
     safe_user_input = sanitize_input(user_input)
 
+    # in the system_msg I pass the tools it can use
+    # and give some few shots examples
     system_msg = (
         "You are a helpful assistant that uses tools. "
         "Based on the user's request, you must call the "
@@ -409,7 +431,12 @@ def get_answer_ids(
 
     """
     # Isolate context growth to a local list to prevent caller side-effects
+    # lists are mutable references. So I make a copy. Also,
+    # working_ids is the full input context
+    # the entire previous prompt plus all newly generated tokens
     working_ids: list[int] = list(input_ids)
+
+    # Collects only the new tokens generated by the model
     answer_ids: list[int] = []
 
     for _ in range(MAX_TOKENS):

@@ -1,18 +1,17 @@
-from src.schemas import (
-    FunctionDefinition,
-)
-import pytest
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 from llm_sdk import Small_LLM_Model
 from src.bpe_tokenizer import (
-    initialize_tokenizer,
     bpe_tokenize,
+    initialize_tokenizer,
+)
+from src.schemas import (
+    FunctionDefinition,
 )
 from src.utils import extract_json_from_response
-
-
-from typing import Any
 
 
 class DummyModel:
