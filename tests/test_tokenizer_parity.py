@@ -1,12 +1,11 @@
-import json
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import pytest
 
 from llm_sdk import Small_LLM_Model
-from src.bpe_tokenizer import bpe_tokenize, custom_decode
+from src.bpe_tokenizer import bpe_tokenize, custom_decode, initialize_tokenizer
 
 
 class DummyModel:
@@ -22,29 +21,6 @@ class DummyModel:
         return []
 
 
-def load_vocab_json(path: str) -> dict[str, int]:
-    vocab_path = Path(path)
-    with vocab_path.open("r", encoding="utf-8") as f:
-        data = json.load(f)
-        return cast("dict[str, int]", data)
-
-
-def load_merges_txt(path: str) -> dict[tuple[str, str], int]:
-    merges: dict[tuple[str, str], int] = {}
-    merge_path = Path(path)
-    with merge_path.open("r", encoding="utf-8") as f:
-        rank = 0
-        for line in f:
-            line_stripped = line.strip()
-            if not line_stripped or line_stripped.startswith("#"):
-                continue
-            parts = line_stripped.split()
-            if len(parts) == 2:
-                merges[(parts[0], parts[1])] = rank
-                rank += 1
-    return merges
-
-
 # Type definition for fixture return tuple
 TokenizerAssets = tuple[
     Small_LLM_Model,
@@ -55,11 +31,8 @@ TokenizerAssets = tuple[
 
 
 @pytest.fixture(scope="module")
-def tokenizer_assets(
-    pytestconfig: pytest.Config,
-) -> Iterator[TokenizerAssets]:
-    """Module-scoped fixture to load assets to skip weight loading."""
-    # Monkeypatch model loading at the fixture level
+def tokenizer_assets() -> Iterator[TokenizerAssets]:
+    """Load production tokenizer assets (tokenizer.json + Hub merges)."""
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(
         "transformers.AutoModelForCausalLM.from_pretrained",
@@ -67,12 +40,10 @@ def tokenizer_assets(
     )
 
     model = Small_LLM_Model()
-
-    vocab_path = model.get_path_to_vocab_file()
-    merges_path = model.get_path_to_merges_file()
-
-    vocab = load_vocab_json(vocab_path)
-    merges = load_merges_txt(merges_path)
+    # Same paths as src/__main__.py — not vocab.json + ad-hoc merge parsing
+    tokenizer_path = Path(model.get_path_to_tokenizer_file())
+    merges_path = Path(model.get_path_to_merges_file())
+    vocab, merges = initialize_tokenizer(tokenizer_path, merges_path)
     id_to_token = {v: k for k, v in vocab.items()}
 
     yield model, vocab, merges, id_to_token

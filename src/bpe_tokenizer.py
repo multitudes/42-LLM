@@ -158,7 +158,8 @@ def bpe_tokenize(
         merge_ranks: Mapping from token pair tuples to their merge rank.
 
     Returns:
-        List of mapped integer token IDs.
+        List of mapped integer token IDs. Unknown pieces map to ``<unk>``
+        when present, otherwise ``<|endoftext|>``, and are never dropped.
 
     """
     pattern = f"({'|'.join(re.escape(tok) for tok in SPECIAL_TOKENS)})"
@@ -198,13 +199,15 @@ def bpe_tokenize(
                 i += 1
         tokens = new_tokens
 
-    # Retrieves the ID for unknown tokens as fallback
+    # Prefer <unk>; otherwise <|endoftext|> so OOV pieces are never dropped
     unk_id = vocab.get("<unk>")
-    # Avoid dropping unknown tokens
-    if unk_id is not None:
-        return [vocab.get(token, unk_id) for token in tokens]
+    if unk_id is None:
+        unk_id = vocab.get(
+            "<|endoftext|>",
+            SPECIAL_TOKENS["<|endoftext|>"],
+        )
 
-    return [vocab[token] for token in tokens if token in vocab]
+    return [vocab.get(token, unk_id) for token in tokens]
 
 
 def custom_decode(

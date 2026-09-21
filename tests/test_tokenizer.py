@@ -51,13 +51,19 @@ def test_bpe_tokenize_unknown_tokens_mapped_to_unk() -> None:
     assert token_ids[3:] == [0, 0, 0, 0]
 
 
-def test_bpe_tokenize_without_unk_in_vocab() -> None:
-    # Fallback sanity check when <unk> is missing from vocab
-    vocab = {"c": 1, "a": 2, "t": 3}
+def test_bpe_tokenize_without_unk_uses_endoftext_fallback() -> None:
+    """When <unk> is absent, unknown pieces map to <|endoftext|> (never drop)."""
+    vocab = {
+        "<|endoftext|>": 151643,
+        "c": 1,
+        "a": 2,
+        "t": 3,
+    }
     merge_ranks: dict[tuple[str, str], int] = {}
 
     input_text = "cat dog"
     token_ids = bpe_tokenize(input_text, vocab, merge_ranks)
 
-    # Should safely drop missing tokens if <unk> is absent in vocab
-    assert token_ids == [1, 2, 3]
+    assert len(token_ids) == len(input_text)
+    assert token_ids[:3] == [1, 2, 3]
+    assert token_ids[3:] == [151643, 151643, 151643, 151643]
