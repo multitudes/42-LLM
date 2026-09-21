@@ -154,6 +154,11 @@ def enforce_arg_types(
     Returns:
         Dictionary with type-coerced argument values.
 
+    Raises:
+        ValueError: If a provided argument cannot be coerced to its
+            schema type. Callers such as ``extract_json_from_response``
+            catch this and fail the tool call.
+
     """
     fn_def = next((f for f in functions_def if f.get("name") == name), None)
 
@@ -187,8 +192,12 @@ def enforce_arg_types(
                 else:
                     parameters[arg_name] = bool(val)
 
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as e:
+            msg = (
+                f"Cannot coerce argument '{arg_name}' to type "
+                f"'{arg_type}' for function '{name}': {val!r}"
+            )
+            raise ValueError(msg) from e
 
     return parameters
 

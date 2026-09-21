@@ -269,13 +269,34 @@ def test_string_coercion(
 # --- FALLBACK & FAILURE EDGE CASES ---
 
 
-def test_unparseable_value_retains_original(
+def test_unparseable_value_raises(
     sample_functions_def: list[dict[str, Any]],
 ) -> None:
-    """Verifies that completely invalid types fall back gracefully."""
+    """Unparseable values raise so the caller can fail the tool call."""
     params = {"item_count": "invalid_integer_string"}
-    res = enforce_arg_types("calculate_metrics", params, sample_functions_def)
-    assert res["item_count"] == "invalid_integer_string"
+    with pytest.raises(ValueError, match="item_count"):
+        enforce_arg_types("calculate_metrics", params, sample_functions_def)
+
+
+def test_extract_json_unparseable_arg_returns_empty(
+    mock_tools: list[FunctionDefinition],
+) -> None:
+    """Failed type coercion fails the call (empty SelectedFunction)."""
+    prompt = "Add five and three"
+    response = (
+        '{"name": "fn_add_numbers", '
+        '"parameters": {"a": "not-a-number", "b": 3.0}}'
+    )
+
+    result = extract_json_from_response(
+        prompt=prompt,
+        response=response,
+        functions=mock_tools,
+    )
+
+    assert result.name == ""
+    assert result.parameters == {}
+    assert result.prompt == prompt
 
 
 def test_unknown_function_name_returns_unmodified_dict(
