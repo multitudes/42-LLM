@@ -1,41 +1,62 @@
-This project has been created as part of the 42 curriculum by lbrusa.
+*This project has been created as part of the 42 curriculum by lbrusa.*
 
 # 42-LLM: Local Tool-Calling LLM System
 
 ## Description
 
-This project implements an embedded, local Large Language Model (LLM) pipeline designed to autonomously select and format tool/function calls based on natural language user requests. 
+This project implements an embedded, local Large Language Model (LLM) pipeline that selects and formats tool/function calls from natural language prompts.
 
-The core goal is to enable structural tool invocation natively within Python without relying on external cloud APIs or background server daemons like Ollama. Executing directly inside the process memory via `llm_sdk`, the pipeline parses custom function definitions, constructs ChatML prompts, processes subword tokenization, decodes model outputs, and enforces target types using Pydantic schemas.
+The goal is structural tool invocation inside a single Python process—without cloud APIs or background daemons such as Ollama. Using `llm_sdk` (Hugging Face Transformers), the pipeline loads function definitions, builds ChatML prompts with few-shot examples, runs custom BPE tokenization, greedily decodes with stop tokens, extracts the first balanced JSON object, validates the chosen tool against the schema, and coerces argument types with Pydantic models before writing JSON output.
 
 ---
 
 ## Instructions
 
 ### System Requirements
-* **Python Version:** 3.12 or later
-* **Package Manager:** [`uv`](https://docs.astral.sh/uv/) for deterministic environment synchronization
-* **Coding Standards:** PEP 8 compliance verified via `flake8`
+
+* **Python:** 3.10 or later (`pyproject.toml` requires `>=3.10`; development target is 3.12)
+* **Package manager:** [`uv`](https://docs.astral.sh/uv/) for locked, reproducible environments
+* **Lint / types:** `flake8` and `mypy` via the Makefile; `ruff` is also available as a dev dependency
 
 ### Installation
 
-1. Install `uv` (if not already installed):
-   ```bash
-   curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
+1. Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) if it is not already available (for example on macOS: `brew install uv`). Prefer the official installer documentation over piping remote scripts into a shell.
+2. From the repository root, synchronize dependencies:
 
-```
-
-2. Synchronize project dependencies:
 ```bash
 uv sync
-
+# or: make install
 ```
+
+3. (Optional) Run checks:
+
+```bash
+make lint
+make test
+```
+
+### Execution
+
+```bash
+# Defaults: data/input/functions_definition.json, data/input/function_calling_tests.json,
+#           data/output/function_calls.json
+uv run python -m src
+# or: make run
+
+# Custom paths
+uv run python -m src \
+  --functions_definition data/input/functions_definition.json \
+  --input data/input/function_calling_tests.json \
+  --output data/output/function_calling_name.json
+```
+
+The first run downloads the Qwen3-0.6B tokenizer/model assets from the Hugging Face Hub into the local cache.
 
 ---
 
 ## Example Usage
 
-Given an input functions definition file (`data/input/functions_definition.json`):
+Given `data/input/functions_definition.json`:
 
 ```json
 [
@@ -52,10 +73,9 @@ Given an input functions definition file (`data/input/functions_definition.json`
     }
   }
 ]
-
 ```
 
-And a test prompt JSON file (`data/input/function_calling_tests.json`):
+And `data/input/function_calling_tests.json`:
 
 ```json
 [
@@ -63,20 +83,15 @@ And a test prompt JSON file (`data/input/function_calling_tests.json`):
     "prompt": "Reverse the string 'hello'"
   }
 ]
-
 ```
-Run the application as a module using `uv`:
+
+Run:
 
 ```bash
-# Run with default file locations
 uv run python -m src
-
-# Run with custom input, output, and function definition paths
-uv run python -m src --functions_definition data/input/functions_definition.json --input data/input/function_calling_tests.json --output data/output/function_calling_name.json
-
 ```
 
-Executing the command generates the structured function call output (`data/output/function_calling_name.json`):
+Example structured output (`data/output/function_calls.json`):
 
 ```json
 [
@@ -88,109 +103,120 @@ Executing the command generates the structured function call output (`data/outpu
     }
   }
 ]
-
 ```
-
 
 ---
 
 ## Algorithm Explanation
 
-The pipeline uses a structured ChatML template combined with post-generation JSON extraction to achieve reliable tool selection:
+The pipeline uses **constrained decoding via prompt structure and post-generation validation**, not logit masking:
 
-1. **Schema Ingestion:** Reads function definitions and formats them into a standardized JSON tool list matching OpenAI-compatible schemas.
-2. **Context Creation:** Wraps user prompts, available tool specifications, and few-shot examples inside `<|im_start|>` and `<|im_end|>` ChatML tags, suppressing internal reasoning using `/no_think`.
-3. **BPE Tokenization:** BPE tokenizes input strings using vocabulary ranks and converts tokens to sequence IDs.
-4. **Inference & Decoding:** Generates answer IDs via `llm_sdk` and decodes them back to raw text.
-5. **Regex JSON Extraction & Type Enforcement:** Extracts the serialized JSON payload via regular expressions, parses it into Pydantic models (`SelectedFunction`), and forcibly casts argument values (e.g., converting integer outputs to floats for `"type": "number"`) via `enforce_arg_types()`.
+1. **Schema ingestion:** Load function definitions into Pydantic `FunctionDefinition` models and serialize an OpenAI-style tools JSON string for the system prompt (`get_tool_list`).
+2. **Constrained prompt construction:** Build a ChatML conversation (`<|im_start|>` / `<|im_end|>`) with:
+   * tool schemas and few-shot `<tool_call>…</tool_call>` examples in the system turn;
+   * sanitized user text (control tokens stripped) in the user turn;
+   * a **prefilled assistant prefix** `<|im_start|>assistant\n<tool_call>\n` so generation continues inside a tool-call JSON payload and skips chain-of-thought (`<think>`) turns.
+3. **Custom BPE tokenization:** Encode the full prompt with Hub `tokenizer.json` vocabulary and Hub `merges.txt` ranks (`initialize_tokenizer` + `bpe_tokenize`).
+4. **Greedy generation with stops:** At each step, take `argmax` over next-token logits from `llm_sdk`, append the token, and stop on `</tool_call>`, `<|im_end|>`, or `<|endoftext|>`, or after a hard `MAX_TOKENS` budget.
+5. **Balanced JSON extraction:** Parse the first complete JSON object with `json.JSONDecoder.raw_decode` (not a greedy `\{.*\}` regex), validate against `SelectedFunction`, reject unknown tool names and missing required parameters, then coerce types with `enforce_arg_types`.
+6. **Serialize:** Write the list of validated calls to the output JSON file (write failures propagate so the process exits non-zero).
 
 ---
 
 ## Design Decisions
 
-* **Embedded Local Execution:** Selected an embedded SDK runtime over background process daemons (e.g., `llama.cpp` or Ollama) to keep execution entirely self-contained within Python process memory.
-* **Pydantic Validation:** Standardized all tool definitions and output objects using Pydantic models (`FunctionDefinition`, `SelectedFunction`, `Tool`) to guarantee runtime type safety.
-* **Pydantic V2 Migration:** Standardized schema conversion routines on `model_dump()` and `model_validate()` rather than deprecated V1 methods (`.dict()`).
-* **Argparse Configuration:** Integrated standard `argparse` flags (`--functions_definition`, `--input`, `--output`) with fallbacks to default data paths for automated evaluators.
+* **Embedded local runtime:** Prefer in-process `llm_sdk` over Ollama/`llama.cpp` daemons so evaluation stays self-contained.
+* **Prompt-level constraints over logit masks:** Prefill `<tool_call>` and few-shot schemas instead of vocabulary masking—compatible with the provided SDK surface (`get_logits_from_input_ids`).
+* **Pydantic V2 schemas:** `FunctionDefinition`, `SelectedFunction`, and OpenAI-style `Tool*` models with `model_validate` / `model_dump`.
+* **Custom BPE parity path:** Own tokenizer for the assignment, initialized from Hub tokenizer/merges files used at runtime.
+* **CLI via argparse:** `--functions_definition`, `--input`, `--output` with defaults under `data/` for automated graders.
+* **Fail closed on bad tool calls:** Unknown function names or missing required args become empty `SelectedFunction` entries rather than invented calls.
 
 ---
 
 ## Performance Analysis
 
-* **Accuracy:** Reached high precision on structured tool selection by leveraging ChatML delimiters and targeted few-shot examples in system prompts.
-* **Speed:** Offline embedded execution eliminates network latency, enabling token generation to run directly on local GPU/MPS or CPU hardware.
-* **Reliability:** Type enforcement routines guarantee that numeric strings or integer outputs returned by the model conform strictly to target JSON types before output serialization.
+* **Accuracy:** ChatML delimiters, few-shot tool-call examples (including regex character-set demos), and schema validation keep structured selection reliable on the exercise prompts.
+* **Speed:** No network round-trips at inference time, but each generated token re-forwards the full growing sequence (no KV cache) and materializes ~152k vocab logits as a Python list before `max(enumerate(...))`. These SDK-level bottlenecks dominate latency; see [`docs/performance.md`](docs/performance.md).
+* **Reliability:** Type coercion, required-parameter checks, and re-raised output write errors reduce silent grader failures. Hub downloads and `trust_remote_code=True` remain supply-chain assumptions for the fixed Qwen model id.
 
 ---
 
 ## Challenges Faced
 
-### 1. Regex Generation Hallucinations
+### 1. Regex generation hallucinations
 
-* **Issue:** For vowel substitution prompts, the local model generated faulty regex patterns like `\w|aeiou` instead of `[aeiou]`, resulting in all word characters being replaced.
-* **Solution:** Added explicit positive few-shot examples demonstrating character sets (`[...]`) and word boundary syntax directly inside system prompts. Providing concrete input/output demonstrations proved far more effective than negative constraints (e.g., "do not use `\w`").
+* **Issue:** For vowel substitution, the model emitted patterns like `\w|aeiou` instead of `[aeiou]`.
+* **Solution:** Positive few-shot examples in the system prompt showing character sets and `\d+` / `\b` usage.
 
-### 2. Schema Structure Updates
+### 2. Schema structure updates
 
-* **Issue:** Adapting code when tool definitions transitioned from legacy keys (`fn_name`, `args_names`, `args_types`) to OpenAI-standard fields (`name`, `description`, `parameters`, `returns`).
-* **Solution:** Refactored `src/schemas.py` and `src/utils.py` to dynamically construct JSON tool specs from nested dictionary maps (`dict[str, ParameterSchema]`), removing the need for artificial description synthesis.
+* **Issue:** Tool definitions moved from legacy keys (`fn_name`, `args_names`, …) to OpenAI-style `name` / `parameters` / `returns`.
+* **Solution:** Refactored `src/schemas.py` and `src/utils.py` around nested `ParameterSchema` maps.
 
-### 3. Infinite Generation & Memory Edge Cases
+### 3. Infinite generation and memory pressure
 
-* **Issue:** Ambiguous or out-of-domain prompts caused the model to endlessly generate repetitive tokens, leading to Apple Silicon MPS memory allocation exhaustion.
-* **Solution:** Enforced strict token limits (`max_new_tokens`) during sequence generation to cut off generation loops cleanly.
+* **Issue:** Out-of-domain prompts caused long repetitive generations and MPS memory pressure.
+* **Solution:** Hard `MAX_TOKENS` cap plus stop-token IDs for `</tool_call>` and ChatML end markers.
+
+### 4. Suppressing chain-of-thought without `/no_think`
+
+* **Issue:** Prefacing with reasoning tags wasted tokens and broke JSON extraction.
+* **Solution:** Prefill the assistant turn with `<tool_call>\n` so decoding starts inside the required JSON envelope.
 
 ---
 
 ## Testing Strategy
 
-* **Schema Validation:** Validated schema parsing against varied function signatures (single-argument, multi-argument, string-based, and numeric functions).
-* **CLI Customization:** Confirmed path overrides across default and custom directory targets using explicit command-line flags.
-* **Edge Case Suite:** Tested model responses against edge cases:
-* Extreme numeric inputs (e.g., large integers, floating points)
-* String operations with escaped quotes and special characters
-* Ambiguous inputs and out-of-domain prompts
-* Incomplete argument lists
+* **Unit tests (`pytest`):** Schema loading, JSON extraction (balanced objects, missing required args, invalid payloads), type coercion edge cases, prompt-injection sanitization, and BPE unknown-token behavior.
+* **Tokenizer parity:** Compare custom encode/decode against Hugging Face on representative strings (`tests/test_tokenizer_parity.py`).
+* **CLI / pipeline stubs:** Monkeypatch heavy model loads and I/O in `tests/test_main.py` / `tests/test_tokenizer.py`.
+* **Manual runs:** Execute `uv run python -m src` against `data/input/function_calling_tests.json` and inspect `data/output/`.
 
-
+```bash
+uv run pytest -v
+# or: make test
+```
 
 ---
 
 ## Resources
 
-* [Flake8 User Guide](https://flake8.pycqa.org/en/latest/index.html)
+* [OpenAI Function Calling Guide](https://platform.openai.com/docs/guides/function-calling)
+* [Hugging Face Transformers Documentation](https://huggingface.co/docs/transformers)
 * [Pydantic Documentation](https://docs.pydantic.dev/)
 * [Astral `uv` Project Guide](https://docs.astral.sh/uv/guides/projects/)
-* [OpenAI Function Calling Guide](https://platform.openai.com/docs/guides/function-calling)
+* [Flake8 User Guide](https://flake8.pycqa.org/en/latest/index.html)
+* [Qwen ChatML / tokenizer notes](https://huggingface.co/Qwen)
 
 ### AI Usage Declaration
 
-AI assistants (Gemini) were used during this project for the following tasks:
+AI assistants (Gemini, Cursor) were used during this project for:
 
-* **Pydantic & Runtime Validation:** Assisting in understanding how Pydantic operates at runtime, including data parsing, field validation rules, and migrating models to Pydantic V2 methods (`model_validate` and `model_dump`).
-* **Regex Diagnosis:** Identifying root causes of local LLM regex syntax hallucinations (`\w|aeiou` vs `[aeiou]`) and formulating effective few-shot prompt adjustments.
-* **Boilerplate Generation:** updating README documentation layout. Spell check. Grammar check. Help with documentation.
+* **Pydantic & runtime validation:** Understanding parsing, field rules, and V2 `model_validate` / `model_dump` migration.
+* **Regex diagnosis:** Root-causing hallucinated patterns (`\w|aeiou` vs `[aeiou]`) and drafting few-shot prompt fixes.
+* **Documentation:** README/layout polish, spell check, grammar, and aligning docs with the implemented pipeline.
+* **Refactor assistance:** Code review triage and test updates around tokenizer/utils changes.
 
 ---
 
 ## Documentation Index
 
-For deep dives into specific sub-components of the project, check the dedicated guides in the `docs/` directory:
-
 | Topic / Module | Description & Link |
 | --- | --- |
-| **BPE Tokenization** | Custom Byte Pair Encoding implementation and subword splitting → [`docs/bpe.md`](docs/bpe.md) |
-| **BPE Pair Merges** | Step-by-step token pair rank evaluation and merging → [`docs/merge.md`](docs/merge.md) |
-| **Prompt Engineering** | ChatML control tokens, JSON output formatting, and special tokens usage → [`docs/prompting_json.md`](docs/prompting_json.md) |
-| **Prompt Examples** | Concrete tool-calling input/output execution samples → [`docs/example-prompts.md`](docs/example-prompts.md) |
-| **LLM SDK** | Integration guidelines and constraints for the `llm_sdk` runtime → [`docs/llm_sdk.md`](docs/llm_sdk.md) |
-| **Ollama vs Local SDK** | Architectural comparison between standalone daemons and embedded runtime → [`docs/ollama.md`](docs/ollama.md) |
-| **Pydantic Validation** | Data models, type checking, and schema enforcement → [`docs/pydantic.md`](docs/pydantic.md) |
-| **Environment Management** | Virtual environment isolation and synchronization using `uv` → [`docs/uv.md`](docs/uv.md) |
-| **Dependency Management** | Approved Python packages (`numpy`, `pydantic`) and forbidden tools → [`docs/packages.md`](docs/packages.md) |
-| **Generation Logs** | Understanding HuggingFace model startup output and token IDs → [`docs/hugginface.md`](docs/hugginface.md) |
-| **Debugging** | Interactive troubleshooting using `breakpoint()` and Python's `pdb` → [`docs/python-debugger.md`](docs/python-debugger.md) |
-| **Developer Hints** | Useful tips for exception handling, linting, and resource management → [`docs/hints.md`](docs/hints.md) |
+| **BPE Tokenization** | Custom Byte Pair Encoding → [`docs/bpe.md`](docs/bpe.md) |
+| **BPE Pair Merges** | Token pair rank merging → [`docs/merge.md`](docs/merge.md) |
+| **Prompt Engineering** | ChatML and JSON formatting → [`docs/prompting_json.md`](docs/prompting_json.md) |
+| **Prompt Examples** | Tool-calling prompt samples → [`docs/example-prompts.md`](docs/example-prompts.md) |
+| **LLM SDK** | Embedded runtime constraints → [`docs/llm_sdk.md`](docs/llm_sdk.md) |
+| **Ollama vs Local SDK** | Daemon vs in-process → [`docs/ollama.md`](docs/ollama.md) |
+| **Pydantic Validation** | Schemas and type checks → [`docs/pydantic.md`](docs/pydantic.md) |
+| **Environment Management** | `uv` workflow → [`docs/uv.md`](docs/uv.md) |
+| **Package Structure** | Modules, packages, imports → [`docs/packages.md`](docs/packages.md) |
+| **Performance** | KV cache / logits bottlenecks → [`docs/performance.md`](docs/performance.md) |
+| **Generation Logs** | Hugging Face startup output → [`docs/hugginface.md`](docs/hugginface.md) |
+| **Debugging** | `pdb` / breakpoints → [`docs/python-debugger.md`](docs/python-debugger.md) |
+| **Developer Hints** | Exceptions, linting tips → [`docs/hints.md`](docs/hints.md) |
 
 ---
 
@@ -198,8 +224,9 @@ For deep dives into specific sub-components of the project, check the dedicated 
 
 | Rule | Command | Purpose |
 | --- | --- | --- |
-| `make install` | `uv sync` | Installs all required dependencies into `.venv` |
-| `make run` | `uv run python -m src` | Runs the main tool-calling LLM application |
-| `make debug` | `uv run python -m pdb -c continue src/__main__.py` | Executes the application in Python's interactive debugger |
-| `make clean` | `rm -rf __pycache__ .venv .pytest_cache` | Cleans temporary cache files and virtual environments |
-| `make lint` | `uv run flake8 src` | Audits source code against PEP 8 coding standards |
+| `make install` | `uv sync` | Install dependencies into `.venv` (requires `uv` already installed) |
+| `make run` | `uv run python -m src` | Run the tool-calling pipeline |
+| `make test` | `uv run pytest -v` | Run the test suite |
+| `make debug` | `uv run python -m pdb src/__main__.py` | Run under `pdb` |
+| `make lint` | `uv run flake8 .` and `uv run mypy .` | Style and type checks |
+| `make clean` | remove caches / `.venv` | Clean temporary build artifacts |

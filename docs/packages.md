@@ -10,8 +10,8 @@ I structure my application source code as an explicit Python package inside the 
 By adding `__init__.py` to a directory, I tell Python and static analysis tools to treat that directory as an explicit package. This enables structured imports across the codebase:
 
 ```python
-# Absolute import from a package submodule
-from llm_sdk.ollama import call_ollama_api
+# Absolute import from the embedded SDK package
+from llm_sdk import Small_LLM_Model
 
 # Relative import within the local src package
 from .schemas import ToolParameter

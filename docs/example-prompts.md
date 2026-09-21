@@ -1,47 +1,53 @@
 # Prompt Engineering & ChatML Formatting
 
-I format all prompt inputs using ChatML control tokens (`<|im_start|>` and `<|im_end|>`) to enforce role boundaries between `system`, `user`, and `assistant`. Explicitly structuring prompts with control tokens prevents model hallucinations, ensures strict JSON formatting, and guarantees that control directives like `/no_think` are obeyed during inference.
+Prompts use ChatML control tokens (`<|im_start|>` and `<|im_end|>`) to enforce role boundaries between `system`, `user`, and `assistant`. Structural constraints—few-shot `<tool_call>` examples and a prefilled assistant prefix—steer the model into JSON tool calls without relying on a `/no_think` directive.
 
 ---
 
 ## ChatML Template & Special Control Tokens
 
-Model architectures like Qwen rely on reserved control token IDs to segment turn conversations:
+Model architectures like Qwen rely on reserved control token IDs to segment conversation turns:
 
 | Token String | Token ID | Purpose |
 | --- | --- | --- |
-| `< | im_start | >` |
-| `< | im_end | >` |
+| `<\|im_start\|>` | 151644 | Begin a ChatML role block |
+| `<\|im_end\|>` | 151645 | End a ChatML role block |
+| `<tool_call>` | 151657 | Begin a structured tool-call payload |
+| `</tool_call>` | 151658 | End a structured tool-call payload (also a stop ID) |
 
-I construct prompt strings dynamically using the following template:
+The production template in `create_prompt` looks like:
 
 ```python
-user_msg = f"{prompt}"
+safe_user_input = sanitize_input(user_input)
+
 final_prompt = (
     f"<|im_start|>system\n{system_msg}<|im_end|>\n"
-    f"<|im_start|>user\n{user_msg}/no_think<|im_end|>\n"
-    f"<|im_start|>assistant\n"
+    f"<|im_start|>user\n{safe_user_input}<|im_end|>\n"
+    f"<|im_start|>assistant\n<tool_call>\n"
 )
-
 ```
 
-Adding the `/no_think` directive inside the ChatML user block instructs reasoning models to bypass internal chain-of-thought token generation and immediately emit structured output.
+Prefilling `<tool_call>\n` after the assistant marker constrains decoding to continue inside the JSON envelope and bypasses the model's tendency to open a `<think>` block.
+
+User input is sanitized first (`sanitize_input`) so injected ChatML or tool tags cannot close the user turn early.
 
 ---
 
 ## Tool Injection & Context Setup
 
-I load tool definitions directly from `exercise_input/functions_definition.json` and inject them into the `system` role block alongside explicit output instructions and few-shot formatting examples:
+Tool definitions from `data/input/functions_definition.json` are converted to an OpenAI-style tools JSON string and injected into the system role together with few-shot examples:
 
 ```text
 <|im_start|>system
-You are a helpful assistant that uses tools. Based on the user's request, you must call the appropriate tool with the correct arguments. You have access to the following tools:
+You are a helpful assistant that uses tools. Based on the user's request, you must call the appropriate tool with the correct arguments by wrapping the JSON in <tool_call> tags.
+
+You have access to the following tools:
 [
   {
     "type": "function",
     "function": {
       "name": "fn_reverse_string",
-      "description": "reverse string function",
+      "description": "Reverse a string and return the reversed result.",
       "parameters": {
         "type": "object",
         "properties": {"s": {"type": "string"}},
@@ -53,46 +59,32 @@ You are a helpful assistant that uses tools. Based on the user's request, you mu
 ---
 Here are some examples:
 
-User: Multiply 45 by 11
-Assistant: {"fn_name": "fn_multiply_numbers", "args": {"a": 45, "b": 11}}
-
 User: can you reverse the word 'banana'?
-Assistant: {"fn_name": "fn_reverse_string", "args": {"s": "banana"}}
----
+Assistant: <tool_call>
+{"name": "fn_reverse_string", "parameters": {"s": "banana"}}
 
-Now, answer the following request. Only provide the JSON for the tool call.<|im_end|>
+</tool_call>
+---
+<|im_end|>
 <|im_start|>user
-Reverse the string 'hello'/no_think<|im_end|>
+Reverse the string 'hello'<|im_end|>
 <|im_start|>assistant
+<tool_call>
 
 ```
 
 ---
 
-## Token Logit Inspection & Reasoning Directives
+## Why Not `/no_think`?
 
-By inspecting raw logit generation using the model's `_decode` utility, I identified how the model processes the `/no_think` directive at the token level:
-
-```text
-Next token ID: 151667, Token: <think>
-Next token ID: 271,    Token: ĊĊ
-Next token ID: 151668, Token: </think>
-Next token ID: 271,    Token: ĊĊ
-Next token ID: 4913,   Token: {"
-Next token ID: 8822,   Token: fn
-...
-Next token ID: 30975,  Token: "}}
-
-```
-
-* **Special Thinking Tokens:** Token IDs `151667` (`<think>`) and `151668` (`</think>`) wrap the reasoning stage.
-* **Bypassing Deliberation:** When supplied with `/no_think` inside valid ChatML tags, the model immediately opens and closes an empty thinking block (emitting only newline tokens `ĊĊ`) before outputting the standard JSON payload.
+Earlier experiments appended `/no_think` inside the user block. The current approach instead **preforces the tool-call opening tag** in the assistant turn. That is a form of constrained decoding at the prompt level: the model is already inside `<tool_call>` when generation starts, so empty `<think>…</think>` preambles are avoided without a special directive token.
 
 ---
 
 ## Generation Loop Safeguards & Stopping Criteria
 
-To prevent the generation loop from repeating output or drifting into infinite token loops after emitting valid JSON, I implement dual stopping constraints:
+To keep generation from drifting after a valid tool call:
 
-1. **Sentinel Token Matching:** The generation loop monitors output tokens for target JSON terminators (such as `}}` or `"` followed by `}}`). Once a complete JSON payload structure is detected, generation halts immediately.
-2. **Maximum Token Budget:** A hard upper limit on `max_new_tokens` acts as a fail-safe against runaway generations if the model hallucinates or fails to produce a closing brace.
+1. **Stop token IDs:** Halt when the next token is `</tool_call>` (151658), `<|im_end|>` (151645), or `<|endoftext|>` (151643).
+2. **Maximum token budget:** `MAX_TOKENS` caps runaway loops if the model never emits a stop ID.
+3. **Post-parse validation:** The first balanced JSON object is extracted with `json.JSONDecoder.raw_decode`; unknown tool names and missing required parameters become empty `SelectedFunction` results.

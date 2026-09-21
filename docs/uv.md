@@ -1,50 +1,35 @@
 # Package Management with `uv`
 
-I use `uv` as the fast package manager and virtual environment manager for this project to guarantee fast, deterministic, and reproducible builds.
+This project uses `uv` as the package and virtual-environment manager for fast, deterministic builds.
 
 ## Setup & Environment Initialization
 
-1. **Install `uv**`:
+1. **Install `uv`** using the [official installation guide](https://docs.astral.sh/uv/getting-started/installation/). On macOS you can also run:
 
 ```zsh
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
+brew install uv
 ```
 
-2. **Initialize the project structure**:
+Avoid piping remote install scripts into a shell unless you trust the source. The project Makefile expects `uv` to already be on `PATH` (`make install` will fail with a clear message if it is missing).
 
-```zsh
-uv init
-
-```
-
-3. **Add production and development dependencies**:
-
-```zsh
-uv add torch transformers huggingface-hub pydantic numpy
-uv add --dev ruff mypy pytest
-
-```
-
-4. **Sync the virtual environment**:
+2. **Synchronize the project environment** from the repository root:
 
 ```zsh
 uv sync
-
+# or: make install
 ```
 
-This builds my local `.venv/` and generates an updated `uv.lock` file to lock all transitive dependencies.
+This creates/updates `.venv/` and honors `uv.lock` for transitive dependency versions.
 
 ## Execution
 
-To run my project's main entry point without needing to manually activate the virtual environment:
+Run the main entry point without manually activating the virtual environment:
 
 ```zsh
 uv run python -m src
-
 ```
 
-Using `uv run` ensures the script uses the project's dedicated isolated interpreter and all pinned packages automatically.
+`uv run` selects the project interpreter and pinned packages automatically.
 
 ## Core Workflow Commands
 
@@ -52,28 +37,24 @@ Using `uv run` ensures the script uses the project's dedicated isolated interpre
 
 ```zsh
 uv add <package>
-
 ```
 
 * **Add a dev tool:**
 
 ```zsh
 uv add --dev <package>
-
 ```
 
 * **Remove a dependency:**
 
 ```zsh
 uv remove <package>
-
 ```
 
-* **Inspect installed dependency tree:**
+* **Inspect the dependency tree:**
 
 ```zsh
 uv tree
-
 ```
 
 * **Run project tools and tests:**
@@ -81,32 +62,32 @@ uv tree
 ```zsh
 uv run pytest
 uv run mypy .
-uv run ruff check --fix .
-
+uv run flake8 .
+uv run ruff check .
 ```
 
 * **Synchronize state:**
 
 ```zsh
 uv sync
-
 ```
 
 ## Project File Structure
 
-My project relies on modern Python packaging tools rather than a legacy `requirements.txt`:
+Packaging uses modern Python metadata rather than a legacy `requirements.txt`:
 
-* `pyproject.toml` — Standard project configuration, metadata, and dependency definitions.
-* `uv.lock` — Cross-platform lockfile enforcing exact version parity across machines.
-* `.venv/` — Automatically managed virtual environment directory.
+* `pyproject.toml` — Project configuration, metadata, and dependencies.
+* `uv.lock` — Cross-platform lockfile for exact version parity.
+* `.venv/` — Managed virtual environment directory.
 
 ## Implementation Notes
 
-* I never manually activate `.venv/` — `uv run` handles virtual environment isolation and context execution dynamically.
-* The `uv.lock` file ensures my project builds identically across different environments.
-* All data schemas and tool parameters in my pipeline use `pydantic` for runtime validation.
+* Prefer `uv run …` over manually activating `.venv/`.
+* Keep `uv.lock` committed so environments stay reproducible.
+* Runtime schemas and tool parameters use `pydantic` for validation.
 
 ## References
 
 * [uv Documentation](https://docs.astral.sh/uv/)
+* [uv Installation](https://docs.astral.sh/uv/getting-started/installation/)
 * [pyproject.toml Specification](https://packaging.python.org/en/latest/specifications/pyproject-toml/)
