@@ -5,7 +5,7 @@ MYPY := $(UV) run mypy
 FLAKE8 := $(UV) run flake8
 PYTEST := $(UV) run pytest
 
-.PHONY: all install run test debug clean lint lint-strict
+.PHONY: all install run test debug clean fclean lint lint-strict
 
 all: install lint test
 
@@ -36,6 +36,10 @@ clean:
 	rm -rf .venv .mypy_cache .pytest_cache tests/.ruff_cache output build dist *.egg-info
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
+
+fclean: clean
+	@echo "Removing Hugging Face Hub model cache (~/.cache/huggingface/hub)..."
+	rm -rf "$(HOME)/.cache/huggingface/hub"
 
 lint:
 	$(FLAKE8) .

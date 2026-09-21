@@ -230,3 +230,4 @@ AI assistants (Gemini, Cursor) were used during this project for:
 | `make debug` | `uv run python -m pdb src/__main__.py` | Run under `pdb` |
 | `make lint` | `uv run flake8 .` and `uv run mypy .` | Style and type checks |
 | `make clean` | remove caches / `.venv` | Clean temporary build artifacts |
+| `make fclean` | `make clean` + wipe HF Hub cache | Also deletes `~/.cache/huggingface/hub` (models re-download on next run) |
