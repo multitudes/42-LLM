@@ -2,7 +2,7 @@
 
 *This project has been created as part of the 42 curriculum by lbrusa.*
 
-# 42-LLM: Local Tool-Calling LLM System
+# Call-Me-Maybe: Local Tool-Calling LLM System
 
 ## Description
 
